@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta name="theme-color" content="#090b18">
+  <meta name="theme-color" content="#080808">
   <title>Kadens propxy · Your link, your space</title>
+  <script>try{if(!sessionStorage.getItem('kadenBootSeen')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('boot-active')}catch{}</script>
   <style>
     :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--ink:#f5f5ff;--muted:#adb5d0;--mint:#8df1d5;--violet:#c5b1ff}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;overflow-x:hidden;min-height:100vh;color:var(--ink);background:radial-gradient(ellipse 45% 55% at 2% 8%,#3f317c82,transparent 72%),radial-gradient(ellipse 42% 48% at 98% 91%,#1b707066,transparent 74%),#090b18}
@@ -17,10 +18,46 @@
     @media(max-width:850px){.wrap{width:min(620px,calc(100% - 36px))}.topbar{height:76px}.hero{grid-template-columns:1fr;gap:55px;padding:65px 0 55px}h1{font-size:clamp(64px,12vw,90px)}.preview{transform:none}.steps{grid-template-columns:1fr;gap:12px;padding-bottom:65px}.step{min-height:0}.intro{font-size:16px}}
     @media(max-width:430px){h1{font-size:64px}.toplink{font-size:11px}.preview-body{padding:26px}.browser-bar{padding:14px}.bottom{flex-direction:column;gap:7px}}
   </style>
+  <style>
+    :root{--ink:#f7f7f7;--muted:#aaa;--mint:#f5f5f5;--violet:#ccc}
+    body{background:radial-gradient(ellipse 48% 50% at 0 0,#29292966,transparent 75%),#080808}
+    body:before{opacity:.14;background-image:linear-gradient(#bcbcbc22 1px,transparent 1px),linear-gradient(90deg,#bcbcbc22 1px,transparent 1px)}
+    .logo{border-color:#eee;background:#ececec;color:#080808;box-shadow:none}
+    .logo svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:6;stroke-linejoin:round}
+    .brand b,.toplink,.bottom a{color:#e1e1e1}
+    h1 span{background:linear-gradient(100deg,#fff,#9c9c9c);background-clip:text;color:transparent}
+    .eyebrow:before{background:#fff;box-shadow:0 0 13px #aaa}
+    .cta,.fake-button{background:#f1f1f1;color:#0a0a0a;box-shadow:0 12px 35px #ffffff18}
+    .preview{background:linear-gradient(145deg,#1d1d1d,#101010 70%);border-color:#777;box-shadow:0 36px 100px #000b,inset 0 1px #ffffff19}
+    .preview:before{background:#d7d7d744}
+    .lights i,.lights i:first-child,.lights i:nth-child(2){background:#aaa}
+    .address,.fake-input{background:#0b0b0b;color:#aaa;border-color:#5a5a5a}
+    .mini-label,.preview-footer strong,.step-num{color:#e9e9e9}
+    .step{border-color:#6a6a6a;background:#ffffff07}
+    .boot{display:none;position:fixed;inset:0;z-index:9999;background:#050505;color:#efefef;font:700 clamp(10px,1.05vw,15px)/1.5 "Courier New",monospace;overflow:hidden}
+    .boot-active .boot{display:block}
+    .boot-bar{position:absolute;top:17px;right:clamp(18px,5vw,76px);background:#eee;color:#090909;padding:1px 7px;font-size:14px;line-height:1.2}
+    .boot-terminal{position:absolute;top:clamp(56px,9vh,100px);left:clamp(22px,6.5vw,90px);width:min(810px,calc(100% - 44px));white-space:pre-wrap;animation:boot-text-out .35s .62s both}
+    .boot-terminal p{margin:0 0 15px}.boot-terminal .paths{margin-top:20px;color:#cfcfcf;font-size:.9em}
+    .boot-star{position:absolute;width:clamp(120px,18vw,240px);aspect-ratio:1;left:50%;top:50%;transform:translate(-50%,-50%) scale(.82);opacity:0;animation:boot-star-in .6s .48s ease-out both}
+    .boot-star svg{width:100%;height:100%;filter:drop-shadow(0 0 16px #ffffff35)}
+    .boot-progress{position:absolute;left:clamp(22px,6.5vw,90px);right:clamp(22px,6.5vw,90px);bottom:clamp(28px,6vh,62px);display:flex;align-items:center;gap:15px;font-size:11px;letter-spacing:.08em;color:#bdbdbd}
+    .boot-track{flex:1;height:2px;background:#4a4a4a}.boot-track i{display:block;width:0;height:100%;background:#f4f4f4;animation:boot-load 1s linear both}
+    .boot-skip{border:1px solid #777;background:#151515;color:#eee;font:inherit;font-size:10px;padding:7px 10px;cursor:pointer}
+    .boot-skip:focus-visible{outline:2px solid #fff;outline-offset:3px}
+    @keyframes boot-text-out{to{opacity:.18}}@keyframes boot-star-in{to{opacity:1;transform:translate(-50%,-50%) scale(1)}}@keyframes boot-load{to{width:100%}}
+    @media(max-width:600px){.boot-terminal{font-size:10px}.boot-terminal .paths{font-size:9px}.boot-progress{gap:8px;font-size:9px}.boot-bar{font-size:12px}}
+  </style>
 </head>
 <body>
+  <div id="boot" class="boot" role="status" aria-label="Kaden loading screen">
+    <span class="boot-bar">Kaden</span>
+    <div class="boot-terminal"><p>KADEN SYSTEM / BOOT SEQUENCE</p><p>An error has occurred. To continue:</p><p>Press Enter to launch Kaden, or wait for startup_</p><p>Loading your private browsing space...</p><div class="paths">C:\Users\Kaden\external_client\BOOT.EXE<br>C:\Users\Kaden\external_client\ACCESS.EXE<br>C:\Users\Kaden\external_client\LINKS.EXE<br>C:\Users\Kaden\external_client\READY.EXE</div></div>
+    <div class="boot-star" aria-hidden="true"><svg viewBox="0 0 140 140"><defs><pattern id="bootDots" width="5" height="5" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="#d9d9d9"/></pattern></defs><polygon points="70,8 124,105 16,105" fill="url(#bootDots)"/><polygon points="70,132 16,35 124,35" fill="url(#bootDots)"/></svg></div>
+    <div class="boot-progress"><span>LOADING KADEN</span><span class="boot-track"><i></i></span><button class="boot-skip" type="button">SKIP ↗</button></div>
+  </div>
   <div class="wrap">
-    <header class="topbar"><a class="brand" href="./"><span class="logo">K</span><span>Kadens <b>propxy</b></span></a><a class="toplink" href="https://kadens-propxy.jamisonkaden7.workers.dev/app">OPEN APP ↗</a></header>
+    <header class="topbar"><a class="brand" href="./"><span class="logo"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg></span><span>Kadens <b>propxy</b></span></a><a class="toplink" href="https://kadens-propxy.jamisonkaden7.workers.dev/app">OPEN APP ↗</a></header>
     <main>
       <section class="hero" aria-labelledby="title">
         <div><div class="eyebrow">Your link, your space</div><h1 id="title">The web,<br><span>your way.</span></h1><p class="intro">A clean space for opening public pages. Sign in with GitHub, claim one of two private keys, and paste the link you want to visit.</p><a class="cta" href="https://kadens-propxy.jamisonkaden7.workers.dev/app">Open Kadens propxy <span aria-hidden="true">↗</span></a><small class="aside-note">Two keys · One GitHub account per key · Public pages work best</small></div>
@@ -30,5 +67,8 @@
     </main>
     <footer class="bottom"><span>© Kadens propxy</span><span>Made for links worth opening. <a href="https://github.com/jamisonkaden7-dev/kadens-propxy">View source ↗</a></span></footer>
   </div>
+  <script>
+    (()=>{const root=document.documentElement,boot=document.getElementById('boot');if(!root.classList.contains('boot-active'))return;let done=false;const finish=()=>{if(done)return;done=true;root.classList.remove('boot-active');try{sessionStorage.setItem('kadenBootSeen','1')}catch{};window.removeEventListener('keydown',onKey)};const onKey=e=>{if(e.key==='Enter'||e.key==='Escape')finish()};window.addEventListener('keydown',onKey);boot.querySelector('.boot-skip').addEventListener('click',finish);setTimeout(finish,1100)})();
+  </script>
 </body>
 </html>
