@@ -70,6 +70,16 @@ async function hasAccess(db, userId) {
 async function claimGoogleKey(db, key, googleSub) {
   if (!key || key.length > 100 || !/^\d{5,30}$/.test(String(googleSub))) return 'invalid';
   const hash = await hashKey(key);
+  return claimGoogleKeyHash(db, hash, googleSub);
+}
+
+async function keyExists(db, hash) {
+  if (!/^[a-f0-9]{64}$/.test(hash)) return false;
+  return Boolean(await db.prepare('SELECT key_hash FROM access_keys WHERE key_hash = ?').bind(hash).first());
+}
+
+async function claimGoogleKeyHash(db, hash, googleSub) {
+  if (!/^[a-f0-9]{64}$/.test(hash) || !/^\d{5,30}$/.test(String(googleSub))) return 'invalid';
   const update = await db.prepare(
     'UPDATE access_keys SET google_sub = ?, claimed_at = CURRENT_TIMESTAMP WHERE key_hash = ? AND github_user_id IS NULL AND google_sub IS NULL'
   ).bind(String(googleSub), hash).run();
@@ -95,11 +105,57 @@ async function linkGoogleKey(db, githubUserId, googleSub) {
 }
 
 const modernCss = `
-:root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#090909;color:#eee}body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.12;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='none' stroke='%23aaa' stroke-width='.7'%3E%3Cpath d='M40 17 45 26H35zM40 29 35 20h10zM98 79 103 88H93zM98 91 93 82h10z'/%3E%3C/g%3E%3C/svg%3E")}a{color:inherit}button,input{font:inherit}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #eee;outline-offset:3px}
-.shell{position:relative;min-height:100vh;max-width:1060px;margin:auto;padding:0 28px;display:flex;flex-direction:column}.top{height:68px;border-bottom:1px solid #303030;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:8px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-.03em}.mark{display:grid;place-items:center}.mark svg{width:17px;height:17px;fill:none;stroke:#eee;stroke-width:5}.top-note{font:11px ui-monospace,Consolas,monospace;color:#888;letter-spacing:.1em}
-main{flex:1;display:flex;align-items:center;justify-content:center;padding:70px 0}.center{width:min(580px,100%);text-align:left}.hero-star{display:none}.overline{color:#888;font:11px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase}h1{font-size:clamp(42px,7vw,64px);line-height:1;letter-spacing:-.06em;margin:14px 0 15px;font-weight:700}.subhead{color:#999;font-size:14px;line-height:1.5;margin:0 0 34px}.search{display:flex;align-items:center;width:100%;height:56px;border:1px solid #606060;background:#141414}.search:focus-within{border-color:#eee}.search-icon{display:none}.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#eee;padding:0 16px;font-size:14px}.search input::placeholder{color:#808080}.go{align-self:stretch;min-width:72px;border:0;border-left:1px solid #606060;background:#e8e8e8;color:#111;font-size:14px;font-weight:700}.go:hover{background:#fff}.helper{margin:12px 0 0;color:#777;font-size:11px}.helper code{font:inherit;color:#aaa}.actions{display:flex;gap:20px;flex-wrap:wrap;margin-top:25px}.chip{border:0;border-bottom:1px solid #555;background:none;color:#aaa;font-size:12px;text-decoration:none;padding:0 0 3px}.chip:hover{color:#fff;border-color:#fff}.identity,.info{color:#888;font-size:12px;line-height:1.5;margin-top:27px}.identity strong{color:#ccc;font-weight:400}.info a{color:#ddd}.alert{border-left:2px solid #ccc;background:#191919;padding:12px 14px;margin:0 0 22px;color:#ddd;font-size:12px}.key-input{width:100%;height:52px;border:1px solid #606060;background:#141414;color:#eee;padding:0 15px;font-size:14px;margin-top:12px}.key-input:focus{border-color:#eee;outline:0}.key-submit{height:43px;border:1px solid #ddd;background:#e8e8e8;color:#111;padding:0 20px;margin-top:13px;font-size:12px;font-weight:700}.key-submit:hover{background:#fff}.google-wrap{margin:25px 0 15px;min-height:44px}.foot{border-top:1px solid #303030;padding:18px 0 22px;display:flex;justify-content:space-between;gap:12px;color:#777;font-size:11px}.foot a,.foot button{color:#aaa;font-size:11px;text-decoration:none}.foot a:hover,.foot button:hover{text-decoration:underline}.foot form{display:inline}.foot button{border:0;background:none;padding:0}.error-title{font-size:clamp(38px,6vw,58px)}.reason{margin:20px 0 0;color:#bbb;font-size:13px}
-@media(max-width:600px){.shell{padding:0 19px}.top{height:60px}.top-note{font-size:9px}.foot{flex-direction:column}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important}}
+:root{color-scheme:dark;font-family:Segoe UI Variable,Segoe UI,Arial,sans-serif;font-synthesis:none}
+*{box-sizing:border-box}
+html{min-height:100%;background:#08090a}
+body{margin:0;min-height:100vh;color:#f1f2f2;background:#08090a}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.055;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='148' height='148'%3E%3Cg fill='none' stroke='%23b6bec2' stroke-width='1'%3E%3Cpath d='M38 22 45 34H31zM38 38 31 26h14zM112 102 119 114h-14zM112 118 105 106h14z'/%3E%3C/g%3E%3C/svg%3E")}
+a{color:inherit}
+button,input{font:inherit}
+button{cursor:pointer}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #ddd;outline-offset:4px}
+.shell{position:relative;min-height:100vh;max-width:1260px;margin:0 auto;padding:0 clamp(22px,4.5vw,68px);display:flex;flex-direction:column}
+.top{height:82px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #232629}
+.brand{display:inline-flex;align-items:center;gap:11px;color:#f1f2f2;text-decoration:none;font-size:17px;font-weight:650;letter-spacing:-.045em}
+.mark{width:26px;height:26px;display:grid;place-items:center}
+.mark svg{width:22px;height:22px;fill:none;stroke:#e7e9e9;stroke-width:4;stroke-linejoin:round}
+.top-note{color:#686e71;font:10px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.18em;text-transform:uppercase}
+main{flex:1;display:flex;align-items:center;justify-content:center;padding:80px 0 116px}
+.center{width:min(710px,100%);text-align:left}
+.overline{display:flex;align-items:center;gap:10px;color:#8c9395;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase}
+.overline:before{content:"";display:inline-block;width:7px;height:7px;border:1px solid #babebe;border-radius:50%}
+h1{font-size:clamp(47px,7.4vw,88px);line-height:1.01;letter-spacing:-.078em;margin:23px 0 20px;font-weight:620}
+.subhead{color:#8b9194;font-size:15px;line-height:1.55;margin:0 0 38px;max-width:580px}
+.search{display:flex;align-items:center;width:100%;height:68px;border:1px solid #3f4548;border-radius:11px;background:#111315;box-shadow:0 18px 50px #0003;transition:border-color .15s,box-shadow .15s}
+.search:hover{border-color:#697174}
+.search:focus-within{border-color:#d5d9da;box-shadow:0 0 0 3px #d5d9da12,0 18px 50px #0004}
+.search-icon{flex:0 0 auto;width:19px;height:19px;margin-left:21px;color:#8b9396}
+.search-icon svg{display:block;width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.search input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;color:#f3f4f4;padding:0 20px;font-size:16px;letter-spacing:-.01em}
+.search input::placeholder{color:#697174}
+.go{height:48px;min-width:50px;display:grid;place-items:center;margin-right:9px;padding:0 16px;border:0;border-radius:7px;background:#e5e7e8;color:#111315;font-size:20px;font-weight:500;transition:background .15s,transform .15s}
+.go:hover{background:#fff;transform:translateY(-1px)}
+.helper{display:flex;justify-content:space-between;gap:15px;margin:14px 2px 0;color:#6f777a;font-size:12px;line-height:1.5}
+.helper code{font:inherit;color:#a6adaf}
+.actions{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:25px}
+.chip{border:0;border-bottom:1px solid #6b7376;background:none;color:#abb2b4;font-size:12px;text-decoration:none;padding:0 0 4px}
+.chip:hover{color:#fff;border-color:#fff}
+.identity{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:62px;padding-top:21px;border-top:1px solid #25292b;color:#777f82;font-size:12px;line-height:1.5}
+.identity strong{color:#c3c8ca;font-weight:500}
+.identity form{flex-shrink:0}
+.info{color:#868d90;font-size:12px;line-height:1.6;margin-top:24px}
+.info a{color:#dadede}
+.alert{border:1px solid #565c5f;border-radius:8px;background:#191b1d;padding:13px 15px;margin:0 0 24px;color:#e1e3e3;font-size:13px;line-height:1.5}
+.key-input{width:100%;height:58px;border:1px solid #4a5053;border-radius:8px;background:#111315;color:#f1f2f2;padding:0 17px;font-size:15px;margin-top:12px}
+.key-input:focus{border-color:#d5d9da;outline:0}
+.key-submit{height:46px;border:0;border-radius:7px;background:#e5e7e8;color:#111315;padding:0 22px;margin-top:14px;font-size:13px;font-weight:650}
+.key-submit:hover{background:#fff}
+.google-wrap{margin:30px 0 17px;min-height:44px}
+.reason{margin:22px 0 0;color:#a1a8aa;font-size:14px;line-height:1.6;max-width:570px}
+.error-title{font-size:clamp(42px,6vw,70px)}
+.foot{display:none}
+@media(max-width:600px){.shell{padding:0 20px}.top{height:68px}.top-note{font-size:9px}main{align-items:flex-start;padding:19vh 0 72px}h1{font-size:clamp(48px,12vw,70px)}.subhead{font-size:14px}.search{height:61px}.search-icon{margin-left:15px}.search input{padding:0 13px;font-size:14px}.go{height:43px;min-width:45px;margin-right:7px;padding:0 12px}.identity{margin-top:45px;align-items:flex-start;flex-direction:column}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
 
 const SESSION_AGE = 7 * 24 * 60 * 60;
@@ -118,19 +174,33 @@ export default {
       const path = url.pathname;
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
       if (path === '/ui.js' && request.method === 'GET') return new Response("document.querySelectorAll('form.search').forEach(form=>form.addEventListener('submit',()=>{const button=form.querySelector('button[type=submit]');if(!button)return;const original=button.textContent;button.textContent='Opening…';setTimeout(()=>{button.textContent=original},8000)}));", { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
-      if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? googleLoginPage(env, origin) : startLogin(env, origin);
+      if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? keyPage() : startLogin(env, origin);
+      if (path === '/access' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) {
+        const form = await request.formData();
+        const key = String(form.get('key') || '').trim();
+        if (!key || key.length > 100) return keyPage('That key is not valid.', 400);
+        const hash = await hashKey(key);
+        if (!(await keyExists(env.DB, hash))) return keyPage('That key is not valid.', 400);
+        const response = redirect(`${origin}/login/google`, 303);
+        response.headers.append('Set-Cookie', cookie('__Host-kp_key', await makePendingKey(hash, env.SESSION_SECRET), 600, 'None'));
+        response.headers.append('Set-Cookie', cookie('__Host-kp_session', '', 0, 'None'));
+        response.headers.set('Cache-Control', 'no-store');
+        return response;
+      }
+      if (path === '/login/google' && request.method === 'GET' && env.GOOGLE_CLIENT_ID) {
+        const hash = await readPendingKey(request, env.SESSION_SECRET);
+        return hash ? googleLoginPage(env, origin) : redirect(`${origin}/login`, 302);
+      }
       if (path === '/login/github' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return startLogin(env, origin);
       if (path === '/oauth/callback' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return finishLogin(request, env, origin);
       if (path === '/oauth/google/callback' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) return finishGoogleLogin(request, env, origin);
 
       const user = await readSession(request, env.SESSION_SECRET);
       if (path === '/logout' && request.method === 'POST') {
-        if (!user) return redirect(`${origin}/login`, 303);
-        const form = await request.formData();
-        if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
-        const response = redirect(`${origin}/app`, 303);
-        response.headers.set('Set-Cookie', cookie('__Host-kp_session', '', 0));
+        const response = redirect(`${origin}/login`, 303);
+        response.headers.set('Set-Cookie', cookie('__Host-kp_session', '', 0, 'None'));
         response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
+        response.headers.append('Set-Cookie', cookie('__Host-kp_key', '', 0, 'None'));
         return response;
       }
       if (path === '/' && request.method === 'GET') return Response.redirect(`${origin}/app`, 302);
@@ -144,7 +214,7 @@ export default {
         if (!user) return Response.redirect(`${origin}/login`, 302);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
         const pending = readPending(request);
-        if (user.kind === 'google') return (await hasGoogleAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
+        if (user.kind === 'google') return (await hasGoogleAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : redirect(`${origin}/login`, 302);
         if (env.GOOGLE_CLIENT_ID) return (await hasAccess(env.DB, user.id)) ? await linkPage(user, env, formToken, origin) : googleLoginPage(env, origin);
         return (await hasAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
       }
@@ -154,14 +224,14 @@ export default {
         if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
         const key = String(form.get('key') || '').trim();
         if (env.GOOGLE_CLIENT_ID && user.kind !== 'google') return Response.redirect(`${origin}/app`, 303);
-        const status = user.kind === 'google' ? await claimGoogleKey(env.DB, key, user.id) : await claimKey(env.DB, key, user.id);
+        const status = user.kind === 'google' ? 'invalid' : await claimKey(env.DB, key, user.id);
         if (status === 'claimed' || status === 'owned') return Response.redirect(`${origin}/app`, 303);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
         return claimPage(user, formToken, status === 'taken' ? 'That key has already been claimed by another account.' : 'That key is not valid.', 400);
       }
       if (path === '/browse' && request.method === 'GET') {
         if (!user) {
-          const response = Response.redirect(`${origin}/login`, 302);
+          const response = redirect(`${origin}/login`, 302);
           const pending = String(url.searchParams.get('url') || '').slice(0, 2048);
           if (pending) response.headers.set('Set-Cookie', cookie('__Host-kp_pending', encodeURIComponent(pending), 900));
           return response;
@@ -244,6 +314,25 @@ function fromB64url(value) {
 
 async function hmacKey(secret) {
   return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+async function makePendingKey(hash, secret) {
+  const payload = b64url(encoder.encode(JSON.stringify({ hash, exp: Math.floor(Date.now() / 1000) + 600 })));
+  const signature = b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(secret), encoder.encode(`key:${payload}`))));
+  return `${payload}.${signature}`;
+}
+
+async function readPendingKey(request, secret) {
+  try {
+    const token = getCookie(request, '__Host-kp_key');
+    if (!token) return null;
+    const [payload, signature, extra] = token.split('.');
+    if (!payload || !signature || extra) return null;
+    const valid = await crypto.subtle.verify('HMAC', await hmacKey(secret), fromB64url(signature), encoder.encode(`key:${payload}`));
+    if (!valid) return null;
+    const data = JSON.parse(new TextDecoder().decode(fromB64url(payload)));
+    return /^[a-f0-9]{64}$/.test(data.hash) && Number.isFinite(data.exp) && data.exp >= Date.now() / 1000 ? data.hash : null;
+  } catch { return null; }
 }
 
 async function makeFormToken(request, secret) {
@@ -361,20 +450,20 @@ async function verifyGoogleCredential(token, clientId) {
 }
 
 async function finishGoogleLogin(request, env, origin) {
+  const pendingHash = await readPendingKey(request, env.SESSION_SECRET);
+  if (!pendingHash) return errorPage('Your key session expired. Enter your key again.', 403);
   const form = await request.formData();
   const csrf = String(form.get('g_csrf_token') || '');
   if (!csrf || csrf.length > 200 || csrf !== getCookie(request, 'g_csrf_token')) return errorPage('Google sign-in could not be verified. Try again.', 403);
   let identity;
   try { identity = await verifyGoogleCredential(form.get('credential'), env.GOOGLE_CLIENT_ID); }
   catch (error) { return errorPage(error.message, 403); }
-  const oldUser = await readSession(request, env.SESSION_SECRET);
-  if (getCookie(request, '__Host-kp_link') === '1' && oldUser?.kind === 'github') {
-    const linked = await linkGoogleKey(env.DB, oldUser.id, identity.id);
-    if (linked !== 'linked') return errorPage('This Google account could not be linked to that claimed key.', 409);
-  }
+  const status = await claimGoogleKeyHash(env.DB, pendingHash, identity.id);
+  if (status !== 'claimed' && status !== 'owned') return keyPage('That key belongs to another account. Sign in with the Google account that first redeemed it.', 403);
   const session = await makeSession(identity, env.SESSION_SECRET);
   const response = redirect(`${origin}/app`, 303);
   response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
+  response.headers.append('Set-Cookie', cookie('__Host-kp_key', '', 0, 'None'));
   response.headers.append('Set-Cookie', cookie('__Host-kp_session', session, SESSION_AGE, 'None'));
   response.headers.set('Cache-Control', 'no-store');
   response.headers.set('Referrer-Policy', 'no-referrer');
@@ -533,9 +622,10 @@ const css = `
 `;
 
 const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg>';
+const searchIcon = '<span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.8"/><path d="m16 16 5 5"/></svg></span>';
 
 function page(title, content, status = 200, googleScript = false, localScript = false) {
-  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">ACCOUNT</span></header><main>${content}</main><footer class="foot"><span>isRecool</span><span><a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="https://github.com/jamisonkaden7-dev/kadens-propxy">Source</a></span></footer></div>`;
+  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">PRIVATE WEB</span></header><main>${content}</main></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
   if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
@@ -550,7 +640,11 @@ function googleWidget(env, origin) {
 }
 
 function googleLoginPage(env, origin) {
-  return page('Sign in', `<section class="center"><div class="overline">isRecool / account</div><h1>Sign in.</h1><p class="subhead">Use the Google account linked to your key.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login/github">Link an existing GitHub claim ↗</a></div><p class="info">If Google sign-in fails here, open this page in a standard browser.</p></section>`, 200, true);
+  return page('Sign in', `<section class="center"><div class="overline">isRecool / 02 — account</div><h1>Your account.</h1><p class="subhead">Sign in with the Google account that owns this key. If this key is new, the account you choose will claim it.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login">Use a different key</a></div></section>`, 200, true);
+}
+
+function keyPage(error = '', status = 200) {
+  return page('Enter key', `<section class="center"><div class="overline">isRecool / 01 — access</div><h1>Enter your key.</h1><p class="subhead">Your key is checked before Google sign-in. A new key belongs to the first Google account that signs in with it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/access" method="post"><label class="overline" for="key">Access key</label><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus><button class="key-submit" type="submit">Continue →</button></form></section>`, status);
 }
 
 function privacyPage() {
@@ -577,7 +671,7 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Type youtube to open it through isRecool. Typing google opens isRecool search; other unknown words use DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
+  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get">${searchIcon}<input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit" aria-label="Open">↗</button></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true);
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
@@ -588,5 +682,5 @@ function appPage(user, env, formToken, pending = '') {
 
 function googleChoicePage(target) {
   const query = target.searchParams.get('q') || '';
-  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Search the web.</h1><p class="subhead">Google blocks this relay. Search through isRecool with DuckDuckGo, or choose to open Google directly.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><button class="go" type="submit">Search ↗</button></form><div class="actions"><a class="chip" href="https://www.google.com/" rel="noreferrer">Open Google directly ↗</a><a class="chip" href="/app">← Back to isRecool</a></div></section>`, 200, false, true);
+  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get">${searchIcon}<input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><button class="go" type="submit" aria-label="Search">↗</button></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
 }

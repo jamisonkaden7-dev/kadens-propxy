@@ -1,4 +1,4 @@
-import { claimKey, claimGoogleKey, hasAccess, hasGoogleAccess, linkGoogleKey, normalizeTarget, resolveDestination } from './core.js';
+import { claimKey, claimGoogleKeyHash, hashKey, keyExists, hasAccess, hasGoogleAccess, linkGoogleKey, normalizeTarget, resolveDestination } from './core.js';
 import { css as modernCss } from './ui.js';
 
 const SESSION_AGE = 7 * 24 * 60 * 60;
@@ -17,19 +17,33 @@ export default {
       const path = url.pathname;
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
       if (path === '/ui.js' && request.method === 'GET') return new Response("document.querySelectorAll('form.search').forEach(form=>form.addEventListener('submit',()=>{const button=form.querySelector('button[type=submit]');if(!button)return;const original=button.textContent;button.textContent='Opening…';setTimeout(()=>{button.textContent=original},8000)}));", { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
-      if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? googleLoginPage(env, origin) : startLogin(env, origin);
+      if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? keyPage() : startLogin(env, origin);
+      if (path === '/access' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) {
+        const form = await request.formData();
+        const key = String(form.get('key') || '').trim();
+        if (!key || key.length > 100) return keyPage('That key is not valid.', 400);
+        const hash = await hashKey(key);
+        if (!(await keyExists(env.DB, hash))) return keyPage('That key is not valid.', 400);
+        const response = redirect(`${origin}/login/google`, 303);
+        response.headers.append('Set-Cookie', cookie('__Host-kp_key', await makePendingKey(hash, env.SESSION_SECRET), 600, 'None'));
+        response.headers.append('Set-Cookie', cookie('__Host-kp_session', '', 0, 'None'));
+        response.headers.set('Cache-Control', 'no-store');
+        return response;
+      }
+      if (path === '/login/google' && request.method === 'GET' && env.GOOGLE_CLIENT_ID) {
+        const hash = await readPendingKey(request, env.SESSION_SECRET);
+        return hash ? googleLoginPage(env, origin) : redirect(`${origin}/login`, 302);
+      }
       if (path === '/login/github' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return startLogin(env, origin);
       if (path === '/oauth/callback' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return finishLogin(request, env, origin);
       if (path === '/oauth/google/callback' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) return finishGoogleLogin(request, env, origin);
 
       const user = await readSession(request, env.SESSION_SECRET);
       if (path === '/logout' && request.method === 'POST') {
-        if (!user) return redirect(`${origin}/login`, 303);
-        const form = await request.formData();
-        if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
-        const response = redirect(`${origin}/app`, 303);
-        response.headers.set('Set-Cookie', cookie('__Host-kp_session', '', 0));
+        const response = redirect(`${origin}/login`, 303);
+        response.headers.set('Set-Cookie', cookie('__Host-kp_session', '', 0, 'None'));
         response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
+        response.headers.append('Set-Cookie', cookie('__Host-kp_key', '', 0, 'None'));
         return response;
       }
       if (path === '/' && request.method === 'GET') return Response.redirect(`${origin}/app`, 302);
@@ -43,7 +57,7 @@ export default {
         if (!user) return Response.redirect(`${origin}/login`, 302);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
         const pending = readPending(request);
-        if (user.kind === 'google') return (await hasGoogleAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
+        if (user.kind === 'google') return (await hasGoogleAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : redirect(`${origin}/login`, 302);
         if (env.GOOGLE_CLIENT_ID) return (await hasAccess(env.DB, user.id)) ? await linkPage(user, env, formToken, origin) : googleLoginPage(env, origin);
         return (await hasAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
       }
@@ -53,14 +67,14 @@ export default {
         if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
         const key = String(form.get('key') || '').trim();
         if (env.GOOGLE_CLIENT_ID && user.kind !== 'google') return Response.redirect(`${origin}/app`, 303);
-        const status = user.kind === 'google' ? await claimGoogleKey(env.DB, key, user.id) : await claimKey(env.DB, key, user.id);
+        const status = user.kind === 'google' ? 'invalid' : await claimKey(env.DB, key, user.id);
         if (status === 'claimed' || status === 'owned') return Response.redirect(`${origin}/app`, 303);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
         return claimPage(user, formToken, status === 'taken' ? 'That key has already been claimed by another account.' : 'That key is not valid.', 400);
       }
       if (path === '/browse' && request.method === 'GET') {
         if (!user) {
-          const response = Response.redirect(`${origin}/login`, 302);
+          const response = redirect(`${origin}/login`, 302);
           const pending = String(url.searchParams.get('url') || '').slice(0, 2048);
           if (pending) response.headers.set('Set-Cookie', cookie('__Host-kp_pending', encodeURIComponent(pending), 900));
           return response;
@@ -143,6 +157,25 @@ function fromB64url(value) {
 
 async function hmacKey(secret) {
   return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+async function makePendingKey(hash, secret) {
+  const payload = b64url(encoder.encode(JSON.stringify({ hash, exp: Math.floor(Date.now() / 1000) + 600 })));
+  const signature = b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(secret), encoder.encode(`key:${payload}`))));
+  return `${payload}.${signature}`;
+}
+
+async function readPendingKey(request, secret) {
+  try {
+    const token = getCookie(request, '__Host-kp_key');
+    if (!token) return null;
+    const [payload, signature, extra] = token.split('.');
+    if (!payload || !signature || extra) return null;
+    const valid = await crypto.subtle.verify('HMAC', await hmacKey(secret), fromB64url(signature), encoder.encode(`key:${payload}`));
+    if (!valid) return null;
+    const data = JSON.parse(new TextDecoder().decode(fromB64url(payload)));
+    return /^[a-f0-9]{64}$/.test(data.hash) && Number.isFinite(data.exp) && data.exp >= Date.now() / 1000 ? data.hash : null;
+  } catch { return null; }
 }
 
 async function makeFormToken(request, secret) {
@@ -260,20 +293,20 @@ async function verifyGoogleCredential(token, clientId) {
 }
 
 async function finishGoogleLogin(request, env, origin) {
+  const pendingHash = await readPendingKey(request, env.SESSION_SECRET);
+  if (!pendingHash) return errorPage('Your key session expired. Enter your key again.', 403);
   const form = await request.formData();
   const csrf = String(form.get('g_csrf_token') || '');
   if (!csrf || csrf.length > 200 || csrf !== getCookie(request, 'g_csrf_token')) return errorPage('Google sign-in could not be verified. Try again.', 403);
   let identity;
   try { identity = await verifyGoogleCredential(form.get('credential'), env.GOOGLE_CLIENT_ID); }
   catch (error) { return errorPage(error.message, 403); }
-  const oldUser = await readSession(request, env.SESSION_SECRET);
-  if (getCookie(request, '__Host-kp_link') === '1' && oldUser?.kind === 'github') {
-    const linked = await linkGoogleKey(env.DB, oldUser.id, identity.id);
-    if (linked !== 'linked') return errorPage('This Google account could not be linked to that claimed key.', 409);
-  }
+  const status = await claimGoogleKeyHash(env.DB, pendingHash, identity.id);
+  if (status !== 'claimed' && status !== 'owned') return keyPage('That key belongs to another account. Sign in with the Google account that first redeemed it.', 403);
   const session = await makeSession(identity, env.SESSION_SECRET);
   const response = redirect(`${origin}/app`, 303);
   response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
+  response.headers.append('Set-Cookie', cookie('__Host-kp_key', '', 0, 'None'));
   response.headers.append('Set-Cookie', cookie('__Host-kp_session', session, SESSION_AGE, 'None'));
   response.headers.set('Cache-Control', 'no-store');
   response.headers.set('Referrer-Policy', 'no-referrer');
@@ -432,9 +465,10 @@ const css = `
 `;
 
 const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg>';
+const searchIcon = '<span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.8"/><path d="m16 16 5 5"/></svg></span>';
 
 function page(title, content, status = 200, googleScript = false, localScript = false) {
-  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">ACCOUNT</span></header><main>${content}</main><footer class="foot"><span>isRecool</span><span><a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="https://github.com/jamisonkaden7-dev/kadens-propxy">Source</a></span></footer></div>`;
+  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">PRIVATE WEB</span></header><main>${content}</main></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
   if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
@@ -449,7 +483,11 @@ function googleWidget(env, origin) {
 }
 
 function googleLoginPage(env, origin) {
-  return page('Sign in', `<section class="center"><div class="overline">isRecool / account</div><h1>Sign in.</h1><p class="subhead">Use the Google account linked to your key.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login/github">Link an existing GitHub claim ↗</a></div><p class="info">If Google sign-in fails here, open this page in a standard browser.</p></section>`, 200, true);
+  return page('Sign in', `<section class="center"><div class="overline">isRecool / 02 — account</div><h1>Your account.</h1><p class="subhead">Sign in with the Google account that owns this key. If this key is new, the account you choose will claim it.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login">Use a different key</a></div></section>`, 200, true);
+}
+
+function keyPage(error = '', status = 200) {
+  return page('Enter key', `<section class="center"><div class="overline">isRecool / 01 — access</div><h1>Enter your key.</h1><p class="subhead">Your key is checked before Google sign-in. A new key belongs to the first Google account that signs in with it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/access" method="post"><label class="overline" for="key">Access key</label><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus><button class="key-submit" type="submit">Continue →</button></form></section>`, status);
 }
 
 function privacyPage() {
@@ -476,7 +514,7 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Type youtube to open it through isRecool. Typing google opens isRecool search; other unknown words use DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
+  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get">${searchIcon}<input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit" aria-label="Open">↗</button></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true);
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
@@ -487,5 +525,5 @@ function appPage(user, env, formToken, pending = '') {
 
 function googleChoicePage(target) {
   const query = target.searchParams.get('q') || '';
-  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Search the web.</h1><p class="subhead">Google blocks this relay. Search through isRecool with DuckDuckGo, or choose to open Google directly.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><button class="go" type="submit">Search ↗</button></form><div class="actions"><a class="chip" href="https://www.google.com/" rel="noreferrer">Open Google directly ↗</a><a class="chip" href="/app">← Back to isRecool</a></div></section>`, 200, false, true);
+  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get">${searchIcon}<input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><button class="go" type="submit" aria-label="Search">↗</button></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
 }

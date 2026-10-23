@@ -96,7 +96,7 @@ test('address input accepts domains and searches but rejects private targets', (
   }
 });
 
-test('Google sign-in, key redemption, and full-page relay launch', async () => {
+test('key-first Google sign-in, account binding, sign-out, and full-page relay launch', async () => {
   const origin = 'https://kadens-propxy.example.workers.dev';
   const relayOrigin = 'https://kadens-propxy-relay.example.workers.dev';
   const db = fakeDb([await hashKey('example-secret')]);
@@ -115,30 +115,44 @@ test('Google sign-in, key redemption, and full-page relay launch', async () => {
     };
     const login = await worker.fetch(new Request(`${origin}/login`), env);
     assert.equal(login.status, 200);
-    assert.match(await login.text(), /g_id_signin/);
-    const invalid = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', body: new URLSearchParams({ credential, g_csrf_token: 'wrong' }) }), env);
+    assert.match(await login.text(), /Enter your key/);
+    const signedOutBrowse = await worker.fetch(new Request(`${origin}/browse?url=google`), env);
+    assert.equal(signedOutBrowse.status, 302);
+    assert.equal(signedOutBrowse.headers.get('location'), `${origin}/login`);
+    assert.match(signedOutBrowse.headers.get('set-cookie'), /__Host-kp_pending=google/);
+    const badKey = await worker.fetch(new Request(`${origin}/access`, { method: 'POST', body: new URLSearchParams({ key: 'bad-key' }) }), env);
+    assert.equal(badKey.status, 400);
+    const access = await worker.fetch(new Request(`${origin}/access`, { method: 'POST', body: new URLSearchParams({ key: 'example-secret' }) }), env);
+    assert.equal(access.status, 303);
+    const keyCookie = access.headers.getSetCookie().find(value => value.startsWith('__Host-kp_key=')).split(';')[0];
+    const googleLogin = await worker.fetch(new Request(`${origin}/login/google`, { headers: { Cookie: keyCookie } }), env);
+    assert.match(await googleLogin.text(), /g_id_signin/);
+    const invalid = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', headers: { Cookie: keyCookie }, body: new URLSearchParams({ credential, g_csrf_token: 'wrong' }) }), env);
     assert.equal(invalid.status, 403);
-    const callback = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', headers: { Cookie: 'g_csrf_token=sample' }, body: new URLSearchParams({ credential, g_csrf_token: 'sample' }) }), env);
+    const callback = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', headers: { Cookie: `${keyCookie}; g_csrf_token=sample` }, body: new URLSearchParams({ credential, g_csrf_token: 'sample' }) }), env);
     assert.equal(callback.status, 303);
     const sessionCookie = callback.headers.getSetCookie().find(value => value.startsWith('__Host-kp_session=')).split(';')[0];
-    const before = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
-    const claimHtml = await before.text();
-    assert.match(claimHtml, /Redeem key/);
-    const formToken = claimHtml.match(/name="form_token" value="([^"]+)"/)?.[1];
-    assert.ok(formToken);
-    const claim = await worker.fetch(new Request(`${origin}/claim`, { method: 'POST', headers: { Cookie: sessionCookie }, body: new URLSearchParams({ key: 'example-secret', form_token: formToken }) }), env);
-    assert.equal(claim.status, 303);
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
-    assert.match(appHtml, /Search or enter a URL/);
+    assert.match(appHtml, /Search or enter an address/);
     assert.match(appHtml, /src="\/ui\.js"/);
     assert.match(after.headers.get('Content-Security-Policy'), /form-action https:/);
     assert.match(after.headers.get('Content-Security-Policy'), /connect-src https:\/\/kadens-propxy-relay\.example\.workers\.dev/);
     assert.equal(after.headers.get('Link'), '<https://kadens-propxy-relay.example.workers.dev>; rel=preconnect');
+    const signout = await worker.fetch(new Request(`${origin}/logout`, { method: 'POST', headers: { Cookie: sessionCookie }, body: new URLSearchParams({ form_token: 'stale' }) }), env);
+    assert.equal(signout.status, 303);
+    assert.equal(signout.headers.get('location'), `${origin}/login`);
+    const secondAccess = await worker.fetch(new Request(`${origin}/access`, { method: 'POST', body: new URLSearchParams({ key: 'example-secret' }) }), env);
+    const secondKeyCookie = secondAccess.headers.getSetCookie().find(value => value.startsWith('__Host-kp_key=')).split(';')[0];
+    const wrongPayload = Buffer.from(JSON.stringify({ iss: 'https://accounts.google.com', aud: env.GOOGLE_CLIENT_ID, sub: '222222222222222222222', email: 'wrong@example.com', email_verified: true, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000)+3600 })).toString('base64url');
+    const wrongSignature = createSign('RSA-SHA256').update(`${header}.${wrongPayload}`).sign(privateKey).toString('base64url');
+    const denied = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', headers: { Cookie: `${secondKeyCookie}; g_csrf_token=sample` }, body: new URLSearchParams({ credential: `${header}.${wrongPayload}.${wrongSignature}`, g_csrf_token: 'sample' }) }), env);
+    assert.equal(denied.status, 403);
+    assert.match(await denied.text(), /belongs to another account/);
     const googleShortcut = await worker.fetch(new Request(`${origin}/browse?url=google`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(googleShortcut.status, 200);
     assert.equal(googleShortcut.headers.get('location'), null);
-    assert.match(await googleShortcut.text(), /Google blocks this relay/);
+    assert.match(await googleShortcut.text(), /Find anything/);
     const googleUrl = await worker.fetch(new Request(`${origin}/browse?url=https%3A%2F%2Fgoogle.com%2Fsearch%3Fq%3Dschool`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(googleUrl.status, 200);
     assert.match(await googleUrl.text(), /value="school"/);
@@ -165,7 +179,10 @@ test('Google sign-in, key redemption, and full-page relay launch', async () => {
     assert.equal(rootRelative.status, 302);
     assert.equal(rootRelative.headers.get('location'), `${relayOrigin}/https://duckduckgo.com/results?search_query=test`);
     const googleBlocked = await relayWorker.fetch(new Request(`${relayOrigin}/https://www.google.com/sorry/index`, { headers: { Cookie: relayCookie } }), relayEnv, {});
-    assert.equal(googleBlocked.status, 403);
-    assert.match(await googleBlocked.text(), /Google blocked this relay/);
+    assert.equal(googleBlocked.status, 302);
+    assert.equal(googleBlocked.headers.get('location'), `${origin}/browse?url=google`);
+    const google404 = await relayWorker.fetch(new Request(`${relayOrigin}/https://accounts.google.com/results?search_query=test`, { headers: { Cookie: relayCookie } }), relayEnv, {});
+    assert.equal(google404.status, 302);
+    assert.equal(google404.headers.get('location'), `${origin}/browse?url=google`);
   } finally { globalThis.fetch = priorFetch; }
 });

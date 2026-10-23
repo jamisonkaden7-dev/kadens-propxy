@@ -16,13 +16,11 @@ export default {
     const session = await readSession(request, env.RELAY_SECRET);
     if (!session || (env.GOOGLE_REQUIRED === 'true' && session.kind !== 'google')) return Response.redirect(env.APP_URL, 302);
     if (url.pathname === '/__kaden_exit') {
-      const out = Response.redirect(env.APP_URL, 302);
-      out.headers.set('Set-Cookie', `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
-      return out;
+      return new Response(null, { status: 302, headers: { Location: env.APP_URL, 'Set-Cookie': `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax` } });
     }
     if (url.pathname === '/') return Response.redirect(env.APP_URL, 302);
 
-    if (isGoogleChallenge(url.pathname)) return googleBlocked(env.APP_URL);
+    if (isGoogleFallbackPath(url.pathname)) return googleFallback(env.APP_URL);
 
     // A proxied page is allowed to request a root-relative path only when its
     // Referer identifies the original public target. Relay then repairs it.
@@ -37,10 +35,11 @@ export default {
       try {
         const safe = normalizeTarget(target.replace(/^ws/i, 'http'), undefined, 8000);
         if (safe.origin === url.origin || safe.origin === new URL(env.APP_URL).origin) return response(400, 'That link cannot be opened.');
+        if (isGoogleFallbackTarget(safe)) return googleFallback(env.APP_URL);
       } catch { return response(400, 'That link cannot be opened.'); }
     }
     const upstreamResponse = await upstream.fetch(request, { ...env, PASSWORD: undefined }, ctx);
-    if (isGoogleChallenge(new URL(upstreamResponse.headers.get('Location') || url.href, url.origin).pathname)) return googleBlocked(env.APP_URL);
+    if (isGoogleFallbackPath(new URL(upstreamResponse.headers.get('Location') || url.href, url.origin).pathname)) return googleFallback(env.APP_URL);
     if (target && request.method === 'GET' && (request.headers.get('Sec-Fetch-Mode') === 'navigate' || request.headers.get('Sec-Fetch-Dest') === 'document') &&
         (upstreamResponse.headers.get('Content-Type') || '').toLowerCase().includes('text/html')) {
       const original = normalizeTarget(target.replace(/^ws/i, 'http'), undefined, 8000);
@@ -72,9 +71,18 @@ function isGoogleChallenge(path) {
   return /^\/https?:\/\/(?:www\.)?google\.[^/]+\/sorry(?:\/|$)/i.test(path);
 }
 
-function googleBlocked(appUrl) {
-  const body = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google blocked this connection · isRecool</title><style>:root{color-scheme:dark;font:14px/1.5 system-ui}body{margin:0;background:#080808;color:#eee}main{max-width:490px;margin:17vh auto;padding:0 24px}small{color:#999}h1{font-size:30px;letter-spacing:-.04em;line-height:1.1;margin:18px 0 12px}p{color:#aaa;margin:0 0 26px}a{color:#eee;text-decoration:none;border-bottom:1px solid #777;margin-right:22px;padding-bottom:3px}a:hover{border-color:#fff}</style><main><small>isRecool / connection</small><h1>Google blocked this relay.</h1><p>Google is rejecting traffic from the relay's network. Open Google directly, or search with DuckDuckGo through isRecool.</p><a href="https://www.google.com/">Open Google directly ↗</a><a href="${appUrl}">Search with isRecool ↗</a></main></html>`;
-  return new Response(body, { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
+function isGoogleFallbackPath(path) {
+  return isGoogleChallenge(path) || /^\/https?:\/\/accounts\.google\.com\/(?:results|sorry)(?:\/|$)/i.test(path);
+}
+
+function isGoogleFallbackTarget(url) {
+  return /^([a-z0-9-]+\.)*google\.[a-z.]+$/i.test(url.hostname) &&
+    (url.pathname.startsWith('/sorry') || url.pathname.startsWith('/results') || url.hostname === 'accounts.google.com');
+}
+
+function googleFallback(appUrl) {
+  const origin = new URL(appUrl).origin;
+  return new Response(null, { status: 302, headers: { Location: `${origin}/browse?url=google`, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }
 
 async function launch(request, env, url) {

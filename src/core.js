@@ -69,6 +69,16 @@ export async function hasAccess(db, userId) {
 export async function claimGoogleKey(db, key, googleSub) {
   if (!key || key.length > 100 || !/^\d{5,30}$/.test(String(googleSub))) return 'invalid';
   const hash = await hashKey(key);
+  return claimGoogleKeyHash(db, hash, googleSub);
+}
+
+export async function keyExists(db, hash) {
+  if (!/^[a-f0-9]{64}$/.test(hash)) return false;
+  return Boolean(await db.prepare('SELECT key_hash FROM access_keys WHERE key_hash = ?').bind(hash).first());
+}
+
+export async function claimGoogleKeyHash(db, hash, googleSub) {
+  if (!/^[a-f0-9]{64}$/.test(hash) || !/^\d{5,30}$/.test(String(googleSub))) return 'invalid';
   const update = await db.prepare(
     'UPDATE access_keys SET google_sub = ?, claimed_at = CURRENT_TIMESTAMP WHERE key_hash = ? AND github_user_id IS NULL AND google_sub IS NULL'
   ).bind(String(googleSub), hash).run();
