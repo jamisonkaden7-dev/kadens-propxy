@@ -1,8 +1,9 @@
 const encoder = new TextEncoder();
 
 export function normalizeTarget(input, base, maxLength = 2048) {
-  const raw = String(input || '').trim();
+  let raw = String(input || '').trim();
   if (!raw || raw.length > maxLength) throw new Error(`Enter a URL under ${maxLength.toLocaleString('en-US')} characters.`);
+  if (!base && !/^[a-z][a-z\d+.-]*:\/\//i.test(raw) && /^[^\s/]+\.[^\s/]+(?:[/?#]|$)/.test(raw)) raw = `https://${raw}`;
   let url;
   try { url = new URL(raw, base); } catch { throw new Error('Enter a valid URL.'); }
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP and HTTPS links are supported.');
@@ -15,6 +16,15 @@ export function normalizeTarget(input, base, maxLength = 2048) {
   if (isPrivateIp(host)) throw new Error('Private IP addresses cannot be opened.');
   url.hash = '';
   return url;
+}
+
+export function resolveDestination(input) {
+  const raw = String(input || '').trim();
+  if (!raw) throw new Error('Enter a website or search.');
+  if (/\s/.test(raw) || (!raw.includes('.') && !raw.includes('://'))) {
+    return normalizeTarget(`https://duckduckgo.com/?q=${encodeURIComponent(raw)}`);
+  }
+  return normalizeTarget(raw);
 }
 
 function isPrivateIp(host) {
@@ -49,4 +59,31 @@ export async function claimKey(db, key, userId) {
 export async function hasAccess(db, userId) {
   const row = await db.prepare('SELECT 1 AS allowed FROM access_keys WHERE github_user_id = ? LIMIT 1').bind(userId).first();
   return Boolean(row);
+}
+
+export async function claimGoogleKey(db, key, googleSub) {
+  if (!key || key.length > 100 || !/^\d{5,30}$/.test(String(googleSub))) return 'invalid';
+  const hash = await hashKey(key);
+  const update = await db.prepare(
+    'UPDATE access_keys SET google_sub = ?, claimed_at = CURRENT_TIMESTAMP WHERE key_hash = ? AND github_user_id IS NULL AND google_sub IS NULL'
+  ).bind(String(googleSub), hash).run();
+  if (update.meta.changes === 1) return 'claimed';
+  const row = await db.prepare('SELECT google_sub FROM access_keys WHERE key_hash = ?').bind(hash).first();
+  if (!row) return 'invalid';
+  return row.google_sub === String(googleSub) ? 'owned' : 'taken';
+}
+
+export async function hasGoogleAccess(db, googleSub) {
+  const row = await db.prepare('SELECT 1 AS allowed FROM access_keys WHERE google_sub = ? LIMIT 1').bind(String(googleSub)).first();
+  return Boolean(row);
+}
+
+export async function linkGoogleKey(db, githubUserId, googleSub) {
+  const update = await db.prepare(
+    'UPDATE access_keys SET google_sub = ? WHERE github_user_id = ? AND google_sub IS NULL AND NOT EXISTS (SELECT 1 FROM access_keys WHERE google_sub = ?)'
+  ).bind(String(googleSub), Number(githubUserId), String(googleSub)).run();
+  if (update.meta.changes === 1) return 'linked';
+  const row = await db.prepare('SELECT google_sub FROM access_keys WHERE github_user_id = ? LIMIT 1').bind(Number(githubUserId)).first();
+  if (!row) return 'not-owned';
+  return row.google_sub === String(googleSub) ? 'linked' : 'already-linked';
 }

@@ -1,4 +1,5 @@
-import { claimKey, hasAccess, normalizeTarget } from './core.js';
+import { claimKey, claimGoogleKey, hasAccess, hasGoogleAccess, linkGoogleKey, normalizeTarget, resolveDestination } from './core.js';
+import { css as modernCss } from './ui.js';
 
 const SESSION_AGE = 7 * 24 * 60 * 60;
 const HTML_LIMIT = 2 * 1024 * 1024;
@@ -8,14 +9,17 @@ const encoder = new TextEncoder();
 export default {
   async fetch(request, env) {
     try {
-      if (!env.DB || !env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET || !env.SESSION_SECRET) {
+      if (!env.DB || !env.SESSION_SECRET || (!env.GOOGLE_CLIENT_ID && (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET))) {
         return page('Setup incomplete', '<p>Configure the database and Worker secrets before opening this site.</p>', 503);
       }
       const url = new URL(request.url);
       const origin = url.origin;
       const path = url.pathname;
-      if (path === '/login' && request.method === 'GET') return startLogin(env, origin);
-      if (path === '/oauth/callback' && request.method === 'GET') return finishLogin(request, env, origin);
+      if (path === '/privacy' && request.method === 'GET') return privacyPage();
+      if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? googleLoginPage(env, origin) : startLogin(env, origin);
+      if (path === '/login/github' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return startLogin(env, origin);
+      if (path === '/oauth/callback' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return finishLogin(request, env, origin);
+      if (path === '/oauth/google/callback' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) return finishGoogleLogin(request, env, origin);
 
       const user = await readSession(request, env.SESSION_SECRET);
       if (path === '/logout' && request.method === 'POST') {
@@ -24,34 +28,48 @@ export default {
         if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
         const response = redirect(`${origin}/app`, 303);
         response.headers.set('Set-Cookie', cookie('__Host-kp_session', '', 0));
+        response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
         return response;
       }
       if (path === '/' && request.method === 'GET') return Response.redirect(`${origin}/app`, 302);
       if (path === '/app' && request.method === 'GET') {
         if (!user) return Response.redirect(`${origin}/login`, 302);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
-        return (await hasAccess(env.DB, user.id)) ? appPage(user, env, formToken) : claimPage(user, formToken);
+        const pending = readPending(request);
+        if (user.kind === 'google') return (await hasGoogleAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
+        if (env.GOOGLE_CLIENT_ID) return (await hasAccess(env.DB, user.id)) ? await linkPage(user, env, formToken, origin) : googleLoginPage(env, origin);
+        return (await hasAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
       }
       if (path === '/claim' && request.method === 'POST') {
         if (!user) return Response.redirect(`${origin}/login`, 303);
         const form = await request.formData();
         if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
         const key = String(form.get('key') || '').trim();
-        const status = await claimKey(env.DB, key, user.id);
+        if (env.GOOGLE_CLIENT_ID && user.kind !== 'google') return Response.redirect(`${origin}/app`, 303);
+        const status = user.kind === 'google' ? await claimGoogleKey(env.DB, key, user.id) : await claimKey(env.DB, key, user.id);
         if (status === 'claimed' || status === 'owned') return Response.redirect(`${origin}/app`, 303);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
         return claimPage(user, formToken, status === 'taken' ? 'That key has already been claimed by another account.' : 'That key is not valid.', 400);
       }
       if (path === '/browse' && request.method === 'GET') {
-        if (!user) return Response.redirect(`${origin}/login`, 302);
-        if (!(await hasAccess(env.DB, user.id))) return Response.redirect(`${origin}/app`, 302);
+        if (!user) {
+          const response = Response.redirect(`${origin}/login`, 302);
+          const pending = String(url.searchParams.get('url') || '').slice(0, 2048);
+          if (pending) response.headers.set('Set-Cookie', cookie('__Host-kp_pending', encodeURIComponent(pending), 900));
+          return response;
+        }
+        if (env.GOOGLE_CLIENT_ID && user.kind !== 'google') return Response.redirect(`${origin}/app`, 302);
+        const allowed = user.kind === 'google' ? await hasGoogleAccess(env.DB, user.id) : await hasAccess(env.DB, user.id);
+        if (!allowed) return Response.redirect(`${origin}/app`, 302);
         if (env.RELAY_URL) {
-          const target = normalizeTarget(url.searchParams.get('url'));
+          const target = resolveDestination(url.searchParams.get('url'));
           const relayOrigin = new URL(env.RELAY_URL).origin;
           if (target.origin === origin || target.origin === relayOrigin) return errorPage('This link cannot be opened.', 400);
           const ticket = b64url(crypto.getRandomValues(new Uint8Array(32)));
           const hash = await hashTicket(ticket);
-          await env.DB.prepare('INSERT INTO relay_tickets (token_hash, github_user_id, target_url, expires_at) VALUES (?, ?, ?, ?)')
+          const table = user.kind === 'google' ? 'google_relay_tickets' : 'relay_tickets';
+          const owner = user.kind === 'google' ? 'google_sub' : 'github_user_id';
+          await env.DB.prepare(`INSERT INTO ${table} (token_hash, ${owner}, target_url, expires_at) VALUES (?, ?, ?, ?)`)
             .bind(hash, user.id, target.href, Math.floor(Date.now() / 1000) + 90).run();
           const response = redirect(`${relayOrigin}/__kaden_launch?ticket=${ticket}`, 303);
           response.headers.set('Cache-Control', 'no-store');
@@ -61,7 +79,7 @@ export default {
         return proxyPage(url.searchParams.get('url'), origin);
       }
       if (path === '/asset' && request.method === 'GET') {
-        if (!user || !(await hasAccess(env.DB, user.id))) return new Response('Unauthorized', { status: 401 });
+        if (!user || !(user.kind === 'google' ? await hasGoogleAccess(env.DB, user.id) : await hasAccess(env.DB, user.id))) return new Response('Unauthorized', { status: 401 });
         return proxyAsset(url.searchParams.get('url'), origin);
       }
       if (path === '/form' && request.method === 'GET') {
@@ -74,7 +92,7 @@ export default {
       return errorPage('Page not found', 404);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Something went wrong.';
-      return errorPage(message, message.includes('URL') || message.includes('link') || message.includes('host') ? 400 : 502);
+      return errorPage(message, /URL|link|host|website|address|search|private/i.test(message) ? 400 : 502);
     }
   }
 };
@@ -83,13 +101,18 @@ function redirect(location, status) {
   return new Response(null, { status, headers: { Location: location } });
 }
 
-function cookie(name, value, age) {
-  return `${name}=${value}; Path=/; Max-Age=${age}; Secure; HttpOnly; SameSite=Lax`;
+function cookie(name, value, age, sameSite = 'Lax') {
+  return `${name}=${value}; Path=/; Max-Age=${age}; Secure; HttpOnly; SameSite=${sameSite}`;
 }
 
 function getCookie(request, name) {
   const part = (request.headers.get('Cookie') || '').split(';').map(x => x.trim()).find(x => x.startsWith(`${name}=`));
   return part ? part.slice(name.length + 1) : null;
+}
+
+function readPending(request) {
+  try { return decodeURIComponent(getCookie(request, '__Host-kp_pending') || '').slice(0, 2048); }
+  catch { return ''; }
 }
 
 function b64url(bytes) {
@@ -129,7 +152,7 @@ async function validFormToken(request, secret, form) {
 }
 
 async function makeSession(identity, secret) {
-  const payload = b64url(encoder.encode(JSON.stringify({ id: identity.id, login: identity.login, exp: Math.floor(Date.now() / 1000) + SESSION_AGE })));
+  const payload = b64url(encoder.encode(JSON.stringify({ kind: identity.kind || 'github', id: identity.id, login: identity.login, exp: Math.floor(Date.now() / 1000) + SESSION_AGE })));
   const signature = b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(secret), encoder.encode(payload))));
   return `${payload}.${signature}`;
 }
@@ -143,7 +166,10 @@ async function readSession(request, secret) {
     const valid = await crypto.subtle.verify('HMAC', await hmacKey(secret), fromB64url(signature), encoder.encode(payload));
     if (!valid) return null;
     const data = JSON.parse(new TextDecoder().decode(fromB64url(payload)));
-    if (!Number.isSafeInteger(data.id) || typeof data.login !== 'string' || !Number.isFinite(data.exp) || data.exp < Date.now() / 1000) return null;
+    data.kind ||= 'github';
+    if (!['github', 'google'].includes(data.kind) || typeof data.login !== 'string' || !Number.isFinite(data.exp) || data.exp < Date.now() / 1000) return null;
+    if (data.kind === 'github' && !Number.isSafeInteger(data.id)) return null;
+    if (data.kind === 'google' && !/^\d{5,30}$/.test(String(data.id))) return null;
     return data;
   } catch { return null; }
 }
@@ -188,7 +214,58 @@ async function finishLogin(request, env, origin) {
   const response = redirect(`${origin}/app`, 303);
   response.headers.append('Set-Cookie', cookie('__Host-kp_state', '', 0));
   response.headers.append('Set-Cookie', cookie('__Host-kp_verifier', '', 0));
-  response.headers.append('Set-Cookie', cookie('__Host-kp_session', session, SESSION_AGE));
+  response.headers.append('Set-Cookie', cookie('__Host-kp_session', session, SESSION_AGE, 'None'));
+  response.headers.set('Referrer-Policy', 'no-referrer');
+  return response;
+}
+
+let googleJwks = null;
+let googleJwksExpiry = 0;
+
+async function verifyGoogleCredential(token, clientId) {
+  if (typeof token !== 'string' || token.length > 8192) throw new Error('Google sign-in token is invalid.');
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Google sign-in token is invalid.');
+  const header = JSON.parse(new TextDecoder().decode(fromB64url(parts[0])));
+  const data = JSON.parse(new TextDecoder().decode(fromB64url(parts[1])));
+  if (header.alg !== 'RS256' || !header.kid) throw new Error('Google sign-in token is invalid.');
+  if (!googleJwks || Date.now() > googleJwksExpiry || !googleJwks.keys.some(item => item.kid === header.kid)) {
+    const result = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+    if (!result.ok) throw new Error('Google sign-in could not be verified right now.');
+    googleJwks = await result.json();
+    const maxAge = Number(result.headers.get('Cache-Control')?.match(/max-age=(\d+)/)?.[1] || 1800);
+    googleJwksExpiry = Date.now() + Math.min(maxAge, 3600) * 1000;
+  }
+  const jwk = googleJwks.keys.find(item => item.kid === header.kid && item.kty === 'RSA' && item.use === 'sig');
+  if (!jwk) throw new Error('Google sign-in token is invalid.');
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, fromB64url(parts[2]), encoder.encode(`${parts[0]}.${parts[1]}`));
+  const now = Math.floor(Date.now() / 1000);
+  if (!valid || data.aud !== clientId || !['accounts.google.com', 'https://accounts.google.com'].includes(data.iss) ||
+      !Number.isFinite(data.exp) || data.exp <= now || !Number.isFinite(data.iat) || data.iat > now + 60 ||
+      !/^\d{5,30}$/.test(String(data.sub)) || data.email_verified !== true || typeof data.email !== 'string') {
+    throw new Error('Google sign-in token is invalid.');
+  }
+  return { kind: 'google', id: String(data.sub), login: data.email };
+}
+
+async function finishGoogleLogin(request, env, origin) {
+  const form = await request.formData();
+  const csrf = String(form.get('g_csrf_token') || '');
+  if (!csrf || csrf.length > 200 || csrf !== getCookie(request, 'g_csrf_token')) return errorPage('Google sign-in could not be verified. Try again.', 403);
+  let identity;
+  try { identity = await verifyGoogleCredential(form.get('credential'), env.GOOGLE_CLIENT_ID); }
+  catch (error) { return errorPage(error.message, 403); }
+  const oldUser = await readSession(request, env.SESSION_SECRET);
+  if (getCookie(request, '__Host-kp_link') === '1' && oldUser?.kind === 'github') {
+    const linked = await linkGoogleKey(env.DB, oldUser.id, identity.id);
+    if (linked !== 'linked') return errorPage('This Google account could not be linked to that claimed key.', 409);
+  }
+  const session = await makeSession(identity, env.SESSION_SECRET);
+  const response = redirect(`${origin}/app`, 303);
+  response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
+  response.headers.append('Set-Cookie', cookie('__Host-kp_session', session, SESSION_AGE, 'None'));
+  response.headers.set('Cache-Control', 'no-store');
   response.headers.set('Referrer-Policy', 'no-referrer');
   return response;
 }
@@ -275,7 +352,7 @@ async function proxyPage(raw, origin) {
   const source = new Response(body, { status: response.status, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   const rewriter = new HTMLRewriter()
     .on('body', { element(e) {
-      e.prepend(`<div style="position:sticky;top:0;z-index:2147483647;padding:10px 16px;background:#101a34;color:#fff;font:14px system-ui;border-bottom:1px solid #375079"><a style="color:#65e3d0;text-decoration:none;font-weight:700" href="${origin}/app">← Kadens propxy</a> <span style="margin-left:12px;opacity:.75">${escapeHtml(finalUrl.hostname)}</span></div>`, { html: true });
+      e.prepend(`<div style="position:sticky;top:0;z-index:2147483647;padding:10px 16px;background:#111;color:#fff;font:14px system-ui;border-bottom:1px solid #555"><a style="color:#eee;text-decoration:none;font-weight:700" href="${origin}/app">← isRecool</a> <span style="margin-left:12px;opacity:.75">${escapeHtml(finalUrl.hostname)}</span></div>`, { html: true });
     } })
     .on('script,iframe,object,embed,base', { element(e) { e.remove(); } })
     .on('meta[http-equiv]', { element(e) { e.remove(); } })
@@ -344,26 +421,49 @@ const css = `
   .error-content .reason{border-color:#777;background:#ffffff0b;color:#eee}
 `;
 
-function page(title, content, status = 200) {
-  const shell = `<div class="frame"><header class="nav"><a class="brand" href="/app"><span class="brand-mark"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg></span><span>Kadens <b>propxy</b></span></a><span class="nav-status">PRIVATE BROWSING SPACE</span></header><main>${content}</main><footer class="footer">Kadens propxy · Public pages work best</footer></div>`;
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeHtml(title)} · Kadens propxy</title><style>${css}</style></head><body>${shell}</body></html>`, {
-    status, headers: proxyHeaders('text/html; charset=utf-8')
-  });
+const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg>';
+
+function page(title, content, status = 200, googleScript = false) {
+  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">OPEN WEB / PRIVATE ACCESS</span></header><main>${content}</main><footer class="foot"><span>isRecool · Public websites work best</span><span><a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="https://github.com/jamisonkaden7-dev/kadens-propxy">Source</a> &nbsp;·&nbsp; <a href="/app">Home</a></span></footer></div>`;
+  const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
+  if (googleScript) {
+    headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
+    headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  }
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · isRecool</title><style>${modernCss}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}</head><body>${shell}</body></html>`, { status, headers });
+}
+
+function googleWidget(env, origin) {
+  return `<div class="google-wrap"><div id="g_id_onload" data-client_id="${escapeHtml(env.GOOGLE_CLIENT_ID)}" data-context="signin" data-ux_mode="redirect" data-login_uri="${escapeHtml(origin)}/oauth/google/callback" data-auto_prompt="false"></div><div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left"></div></div>`;
+}
+
+function googleLoginPage(env, origin) {
+  return page('Sign in', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">Your key, your Google account</div><h1>isRecool.</h1><p class="subhead">Sign in with the Google account that owns your invite key. Your browser will open websites as full pages.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login/github">Already claimed a key with GitHub? Link Google ↗</a></div><p class="info">Use Chrome or another standard browser if Google blocks sign-in inside an embedded browser.</p></section>`, 200, true);
+}
+
+function privacyPage() {
+  return page('Privacy', `<section class="center"><div class="overline">isRecool / Privacy</div><h1 class="error-title">Privacy.</h1><p class="subhead">isRecool uses your Google account ID to keep your redeemed key tied to your account. It stores a hash of the key and that account ID in Cloudflare D1. Your email appears only in a signed browser session cookie and on the account screen.</p><p class="subhead">When you open a link, the service handles the address and page data to relay that public website. It uses short-lived launch tickets and session cookies. The websites you visit may collect information under their own policies. Cloudflare provides hosting and may process request data. isRecool does not sell your account information.</p><p class="subhead">For questions about your data, contact <a href="mailto:jamisonkaden7@gmail.com">jamisonkaden7@gmail.com</a>.</p><div class="actions"><a class="chip" href="/app">← Back to isRecool</a></div></section>`, 200);
+}
+
+async function linkPage(user, env, formToken, origin) {
+  const response = page('Link Google', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">Keep your existing key</div><h1>Link Google.</h1><p class="subhead">Your key is claimed by GitHub account <strong>${escapeHtml(user.login)}</strong>. Sign in with the Google account that should own it from now on.</p>${googleWidget(env, origin)}<p class="info">After linking, use this same Google account to open websites.</p><div class="identity">${logoutForm(formToken)}</div></section>`, 200, true);
+  response.headers.append('Set-Cookie', cookie('__Host-kp_link', '1', 600, 'None'));
+  response.headers.append('Set-Cookie', cookie('__Host-kp_session', await makeSession(user, env.SESSION_SECRET), SESSION_AGE, 'None'));
+  return response;
 }
 
 function errorPage(message, status) {
-  return page('Could not open page', `<section class="error-content"><div class="eyebrow">A small detour</div><h1>That link hit<br>a snag.</h1><p>We could not complete that request. Here is what happened:</p><div class="reason">${escapeHtml(message)}</div><br><a class="back-link" href="/app">Back to Kadens propxy <span aria-hidden="true">↗</span></a></section>`, status);
+  return page('Could not open page', `<section class="center"><div class="overline">isRecool / Error</div><h1 class="error-title">Couldn’t open it.</h1><p class="subhead">Check the address and try again.</p><p class="reason">${escapeHtml(message)}</p><div class="actions"><a class="chip" href="/app">← Back to isRecool</a></div></section>`, status);
 }
 
 function logoutForm(formToken) {
-  return `<form class="logout" action="/logout" method="post"><input type="hidden" name="form_token" value="${formToken}"><button type="submit">Sign out</button></form>`;
+  return `<form action="/logout" method="post"><input type="hidden" name="form_token" value="${formToken}"><button class="chip" type="submit">Sign out</button></form>`;
 }
 
 function claimPage(user, formToken, error = '', status = 200) {
-  return page('Claim a key', `<div class="layout"><section class="hero"><div class="eyebrow">Your private pass starts here</div><h1>One key.<br><span>Your space.</span></h1><p class="lede">Sign in once, claim your invite, and keep your browsing space tied to your GitHub account.</p><div class="features"><span class="feature"><strong>01</strong> Account-bound access</span><span class="feature"><strong>02</strong> One-time claim</span></div></section><section class="panel"><div class="panel-top"><span>ACCESS / 01 OF 02</span><span class="account">@${escapeHtml(user.login)}</span></div><div class="glyph" aria-hidden="true">✦</div><h2>Unlock your access</h2><p>Enter one of the two invite keys. The first GitHub account to claim a key keeps it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/claim" method="post"><input type="hidden" name="form_token" value="${formToken}"><label for="key">Invite key</label><input id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key here" autofocus><button class="primary" type="submit">Claim access <span aria-hidden="true">↗</span></button></form><div class="panel-foot"><span>Signed in as @${escapeHtml(user.login)}</span>${logoutForm(formToken)}</div></section></div>`, status);
+  return page('Claim a key', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">One key / One account</div><h1>Claim access.</h1><p class="subhead">Redeem an invite key once. It stays with the account you’re signed in to.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/claim" method="post"><input type="hidden" name="form_token" value="${formToken}"><label class="overline" for="key">Invite key</label><div style="margin-top:15px"><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus></div><button class="key-submit" type="submit">Redeem key ↗</button></form><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, status);
 }
 
-function appPage(user, env, formToken) {
-  const home = env.SITE_URL && !env.SITE_URL.includes('YOUR-GITHUB-USERNAME') ? `<a class="text-link" href="${escapeHtml(env.SITE_URL)}">View launch page ↗</a>` : 'Your browsing space is ready';
-  return page('Browse', `<div class="layout"><section class="hero"><div class="eyebrow">Access unlocked</div><h1>Pick a link.<br><span>Go explore.</span></h1><p class="lede">Paste a public website address and open it in your private browsing space.</p><div class="features"><span class="feature"><strong>✓</strong> Key claimed</span><span class="feature"><strong>↗</strong> Ready to browse</span></div></section><section class="panel"><div class="panel-top"><span>BROWSE / 02 OF 02</span><span class="account">@${escapeHtml(user.login)}</span></div><div class="glyph" aria-hidden="true">↗</div><h2>Where to next?</h2><p>Enter an HTTP or HTTPS link below. Public pages and articles work best.</p><form action="/browse" method="get"><label for="url">Website address</label><input id="url" name="url" type="url" inputmode="url" placeholder="https://example.com" required autofocus><button class="primary" type="submit">Open website <span aria-hidden="true">↗</span></button></form><div class="panel-foot"><span>${home}</span>${logoutForm(formToken)}</div></section></div>`, 200);
+function appPage(user, env, formToken, pending = '') {
+  return page('Browse', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">Your gateway is ready</div><h1>isRecool.</h1><p class="subhead">Search or enter a website. It opens in this full browser page.</p><form class="search" action="/browse" method="get" target="_top"><label class="search-icon" for="url" aria-label="Website address">⌕</label><input id="url" name="url" type="text" inputmode="url" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit" aria-label="Open website">↗</button></form><p class="helper">Try <code>example.com</code>, a full URL, or a search phrase.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fgithub.com%2F">GitHub ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Key active · Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200);
 }
