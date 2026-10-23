@@ -3,11 +3,9 @@ main = "src/worker.js"
 compatibility_date = "2026-10-01"
 
 [vars]
-# Set this to the exact GitHub Pages URL when the repository is published.
 SITE_URL = "https://jamisonkaden7-dev.github.io/kadens-propxy/"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "kadens-propxy-keys"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
-
+database_id = "a859fd0b-9ea4-400b-88e0-c4bc61e6fd2b"
