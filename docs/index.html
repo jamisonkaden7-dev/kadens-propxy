@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#090909">
 <meta name="referrer" content="no-referrer">
 <title>isRecool</title>
-<script>if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('boot-active')</script>
+<script>let bootSeen=false;try{bootSeen=sessionStorage.getItem('isRecoolBootSeen')==='1'}catch{}if(!bootSeen&&!matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.classList.add('boot-active');try{sessionStorage.setItem('isRecoolBootSeen','1')}catch{}}</script>
 <style>
 :root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#090909;color:#eee}body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.12;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='none' stroke='%23aaa' stroke-width='.7'%3E%3Cpath d='M40 17 45 26H35zM40 29 35 20h10zM98 79 103 88H93zM98 91 93 82h10z'/%3E%3C/g%3E%3C/svg%3E")}a{color:inherit}button,input{font:inherit}a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #eee;outline-offset:3px}
 .page{position:relative;min-height:100vh;max-width:1060px;margin:auto;padding:0 28px;display:flex;flex-direction:column}.top{height:68px;border-bottom:1px solid #303030;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:8px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-.03em}.brand svg{width:17px;height:17px;fill:none;stroke:#eee;stroke-width:5}.top a:last-child,.foot a{color:#aaa;font-size:12px;text-decoration:none}.top a:hover,.foot a:hover{text-decoration:underline}

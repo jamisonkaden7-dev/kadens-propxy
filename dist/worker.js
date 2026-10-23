@@ -164,7 +164,7 @@ export default {
         const allowed = user.kind === 'google' ? await hasGoogleAccess(env.DB, user.id) : await hasAccess(env.DB, user.id);
         if (!allowed) return Response.redirect(`${origin}/app`, 302);
         const target = resolveDestination(url.searchParams.get('url'));
-        if (['google.com', 'www.google.com', 'youtube.com', 'www.youtube.com', 'youtu.be'].includes(target.hostname)) {
+        if (['google.com', 'www.google.com'].includes(target.hostname)) {
           const response = redirect(target.href, 303);
           response.headers.set('Cache-Control', 'no-store');
           response.headers.set('Referrer-Policy', 'no-referrer');
@@ -574,5 +574,11 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  return page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Type google or youtube to open them directly. Other addresses use the relay; unknown words search DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
+  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Type youtube to open it through isRecool. Google opens directly; unknown words search DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
+  if (env.RELAY_URL) {
+    const relayOrigin = new URL(env.RELAY_URL).origin;
+    response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
+    response.headers.set('Content-Security-Policy', `${response.headers.get('Content-Security-Policy')}; connect-src ${relayOrigin}`);
+  }
+  return response;
 }

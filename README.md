@@ -15,7 +15,7 @@ The old deployment names remain in the URLs so existing links keep working. The 
 1. Sign in with Google. The Worker verifies Google's signed ID token and binds a key to Google's stable `sub` account ID, not the changeable email address.
 2. D1 stores hashes of exactly two invite keys. A key can be redeemed only once; signing into the same Google account restores access.
 3. A key already claimed by GitHub can be linked by signing into that GitHub account, then choosing the Google account that should own it. Once Google sign-in is enabled, GitHub alone cannot open websites.
-4. Enter a complete URL, a bare domain such as `example.com`, or a search phrase. The words `google` and `youtube` open those sites directly in the browser, as do their complete URLs, because they do not reliably work through this Cloudflare relay. Other unknown words search DuckDuckGo. Other addresses get a single-use, 90-second launch ticket and open through the relay as a full-page navigation.
+4. Enter a complete URL, a bare domain such as `example.com`, or a search phrase. The word `youtube` and YouTube URLs open through the isRecool relay as a full-page navigation. The word `google` and Google URLs open Google directly because Google blocks this relay. Other unknown words search DuckDuckGo. Relayed addresses get a single-use, 90-second launch ticket.
 5. The relay checks the ticket and owner, then grants a signed six-hour cookie on its own host. Proxied page scripts cannot read the sign-in app's session.
 
 The raw invite keys and signing secrets are not stored in the public repository. The relay blocks private IPs, localhost, embedded URL credentials, and nonstandard ports before forwarding.
@@ -47,7 +47,7 @@ Run `node --test` to check account binding, legacy claim linking, address parsin
 
 The loading screen lasts 3.6 seconds, reveals eight short steps, spins the Star of David, and can be skipped with Enter, Escape, or Skip. The page and app use a compact black/white/grey layout with a faint star pattern. Reduced-motion users skip the animation.
 
-The relay rewrites links, scripts, and asset URLs and caches shared public content. It also remembers the active site's origin to repair root-relative navigations when a site's referrer is missing. Google may block Cloudflare relay traffic with an unusual-traffic challenge; isRecool then offers direct Google and a return to its DuckDuckGo-based search. Other sites, particularly video services, logins, CAPTCHAs, and heavily protected apps, can still fail. [Aetheris](https://github.com/mynamescrax/aetheris) uses Scramjet with libcurl/epoxy and states that it needs a VPS; its backend cannot run as a drop-in Cloudflare Worker or GitHub Pages site.
+The relay rewrites links, scripts, and asset URLs and caches shared public content. It also remembers the active site's origin to repair root-relative navigations when a site's referrer is missing. Google may block Cloudflare relay traffic with an unusual-traffic challenge; isRecool then offers direct Google and a return to its DuckDuckGo-based search. YouTube's home and search HTML load through the relay, but video playback or dynamic interactions may still fail. Other sites, particularly video services, logins, CAPTCHAs, and heavily protected apps, can also fail. [Aetheris](https://github.com/mynamescrax/aetheris) uses Scramjet with libcurl/epoxy and states that it needs a VPS; its backend cannot run as a drop-in Cloudflare Worker or GitHub Pages site.
 
 ## Relay source and license
 

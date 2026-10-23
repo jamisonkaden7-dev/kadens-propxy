@@ -2423,9 +2423,11 @@ class ScriptInjector {
           }
         } catch (e) {}
       }
-      setTimeout(relayScanForStaleLinks, 1500);
-      setTimeout(relayScanForStaleLinks, 4000);
-      setTimeout(relayScanForStaleLinks, 8000);
+      if (RELAY_LOG_NAV) {
+        setTimeout(relayScanForStaleLinks, 1500);
+        setTimeout(relayScanForStaleLinks, 4000);
+        setTimeout(relayScanForStaleLinks, 8000);
+      }
 
       if (typeof MutationObserver === 'function') {
         var relayObserver = new MutationObserver(function(mutations) {

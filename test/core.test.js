@@ -133,12 +133,14 @@ test('Google sign-in, key redemption, and full-page relay launch', async () => {
     assert.match(appHtml, /Search or enter a URL/);
     assert.match(appHtml, /src="\/ui\.js"/);
     assert.match(after.headers.get('Content-Security-Policy'), /form-action https:/);
+    assert.match(after.headers.get('Content-Security-Policy'), /connect-src https:\/\/kadens-propxy-relay\.example\.workers\.dev/);
+    assert.equal(after.headers.get('Link'), '<https://kadens-propxy-relay.example.workers.dev>; rel=preconnect');
     const directGoogle = await worker.fetch(new Request(`${origin}/browse?url=https%3A%2F%2Fgoogle.com%2F`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(directGoogle.status, 303);
     assert.equal(directGoogle.headers.get('location'), 'https://google.com/');
-    const directYoutube = await worker.fetch(new Request(`${origin}/browse?url=youtube`, { headers: { Cookie: sessionCookie } }), env);
-    assert.equal(directYoutube.status, 303);
-    assert.equal(directYoutube.headers.get('location'), 'https://www.youtube.com/');
+    const youtube = await worker.fetch(new Request(`${origin}/browse?url=youtube`, { headers: { Cookie: sessionCookie } }), env);
+    assert.equal(youtube.status, 303);
+    assert.match(youtube.headers.get('location'), /^https:\/\/kadens-propxy-relay\.example\.workers\.dev\/__kaden_launch\?ticket=/);
     const browse = await worker.fetch(new Request(`${origin}/browse?url=example.com`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(browse.status, 303);
     const launchUrl = browse.headers.get('location');
