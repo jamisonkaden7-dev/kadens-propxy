@@ -15,7 +15,7 @@ The old deployment names remain in the URLs so existing links keep working. The 
 1. Sign in with Google. The Worker verifies Google's signed ID token and binds a key to Google's stable `sub` account ID, not the changeable email address.
 2. D1 stores hashes of exactly two invite keys. A key can be redeemed only once; signing into the same Google account restores access.
 3. A key already claimed by GitHub can be linked by signing into that GitHub account, then choosing the Google account that should own it. Once Google sign-in is enabled, GitHub alone cannot open websites.
-4. Enter a complete URL, a bare domain such as `example.com`, or a search phrase. Google.com links open directly in the browser because Google blocks this Cloudflare relay. Search phrases use DuckDuckGo. Other sites get a single-use, 90-second launch ticket and open through the relay as a full-page navigation.
+4. Enter a complete URL, a bare domain such as `example.com`, or a search phrase. The words `google` and `youtube` open those sites directly in the browser, as do their complete URLs, because they do not reliably work through this Cloudflare relay. Other unknown words search DuckDuckGo. Other addresses get a single-use, 90-second launch ticket and open through the relay as a full-page navigation.
 5. The relay checks the ticket and owner, then grants a signed six-hour cookie on its own host. Proxied page scripts cannot read the sign-in app's session.
 
 The raw invite keys and signing secrets are not stored in the public repository. The relay blocks private IPs, localhost, embedded URL credentials, and nonstandard ports before forwarding.

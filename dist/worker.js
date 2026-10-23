@@ -22,6 +22,11 @@ function normalizeTarget(input, base, maxLength = 2048) {
 function resolveDestination(input) {
   const raw = String(input || '').trim();
   if (!raw) throw new Error('Enter a website or search.');
+  const shortcuts = new Map([
+    ['google', 'https://www.google.com/'],
+    ['youtube', 'https://www.youtube.com/']
+  ]);
+  if (shortcuts.has(raw.toLowerCase())) return normalizeTarget(shortcuts.get(raw.toLowerCase()));
   if (/\s/.test(raw) || (!raw.includes('.') && !raw.includes('://'))) {
     return normalizeTarget(`https://duckduckgo.com/?q=${encodeURIComponent(raw)}`);
   }
@@ -159,7 +164,7 @@ export default {
         const allowed = user.kind === 'google' ? await hasGoogleAccess(env.DB, user.id) : await hasAccess(env.DB, user.id);
         if (!allowed) return Response.redirect(`${origin}/app`, 302);
         const target = resolveDestination(url.searchParams.get('url'));
-        if (target.hostname === 'google.com' || target.hostname === 'www.google.com') {
+        if (['google.com', 'www.google.com', 'youtube.com', 'www.youtube.com', 'youtu.be'].includes(target.hostname)) {
           const response = redirect(target.href, 303);
           response.headers.set('Cache-Control', 'no-store');
           response.headers.set('Referrer-Policy', 'no-referrer');
@@ -529,7 +534,7 @@ const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72
 function page(title, content, status = 200, googleScript = false, localScript = false) {
   const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">ACCOUNT</span></header><main>${content}</main><footer class="foot"><span>isRecool</span><span><a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="https://github.com/jamisonkaden7-dev/kadens-propxy">Source</a></span></footer></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
-  if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'"));
+  if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
     headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -569,5 +574,5 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  return page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Google opens directly. Other sites use the relay. Searches use DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
+  return page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Type google or youtube to open them directly. Other addresses use the relay; unknown words search DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
 }

@@ -88,6 +88,8 @@ test('an existing GitHub claim can be linked to one Google account', async () =>
 
 test('address input accepts domains and searches but rejects private targets', () => {
   assert.equal(normalizeTarget('example.com/a').href, 'https://example.com/a');
+  assert.equal(resolveDestination('google').href, 'https://www.google.com/');
+  assert.equal(resolveDestination('YouTube').href, 'https://www.youtube.com/');
   assert.match(resolveDestination('school project').href, /^https:\/\/duckduckgo\.com\/\?q=/);
   for (const value of ['http://localhost/', 'http://127.0.0.1/', 'http://10.1.2.3/', 'http://192.168.0.1/', 'http://169.254.10.1/', 'http://[::1]/', 'file:///etc/passwd', 'https://user:pass@example.com/']) {
     assert.throws(() => normalizeTarget(value), value);
@@ -130,9 +132,13 @@ test('Google sign-in, key redemption, and full-page relay launch', async () => {
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter a URL/);
     assert.match(appHtml, /src="\/ui\.js"/);
+    assert.match(after.headers.get('Content-Security-Policy'), /form-action https:/);
     const directGoogle = await worker.fetch(new Request(`${origin}/browse?url=https%3A%2F%2Fgoogle.com%2F`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(directGoogle.status, 303);
     assert.equal(directGoogle.headers.get('location'), 'https://google.com/');
+    const directYoutube = await worker.fetch(new Request(`${origin}/browse?url=youtube`, { headers: { Cookie: sessionCookie } }), env);
+    assert.equal(directYoutube.status, 303);
+    assert.equal(directYoutube.headers.get('location'), 'https://www.youtube.com/');
     const browse = await worker.fetch(new Request(`${origin}/browse?url=example.com`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(browse.status, 303);
     const launchUrl = browse.headers.get('location');

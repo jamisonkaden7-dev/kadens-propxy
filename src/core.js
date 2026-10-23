@@ -21,6 +21,11 @@ export function normalizeTarget(input, base, maxLength = 2048) {
 export function resolveDestination(input) {
   const raw = String(input || '').trim();
   if (!raw) throw new Error('Enter a website or search.');
+  const shortcuts = new Map([
+    ['google', 'https://www.google.com/'],
+    ['youtube', 'https://www.youtube.com/']
+  ]);
+  if (shortcuts.has(raw.toLowerCase())) return normalizeTarget(shortcuts.get(raw.toLowerCase()));
   if (/\s/.test(raw) || (!raw.includes('.') && !raw.includes('://'))) {
     return normalizeTarget(`https://duckduckgo.com/?q=${encodeURIComponent(raw)}`);
   }
