@@ -45,6 +45,19 @@ export default {
       if (path === '/browse' && request.method === 'GET') {
         if (!user) return Response.redirect(`${origin}/login`, 302);
         if (!(await hasAccess(env.DB, user.id))) return Response.redirect(`${origin}/app`, 302);
+        if (env.RELAY_URL) {
+          const target = normalizeTarget(url.searchParams.get('url'));
+          const relayOrigin = new URL(env.RELAY_URL).origin;
+          if (target.origin === origin || target.origin === relayOrigin) return errorPage('This link cannot be opened.', 400);
+          const ticket = b64url(crypto.getRandomValues(new Uint8Array(32)));
+          const hash = await hashTicket(ticket);
+          await env.DB.prepare('INSERT INTO relay_tickets (token_hash, github_user_id, target_url, expires_at) VALUES (?, ?, ?, ?)')
+            .bind(hash, user.id, target.href, Math.floor(Date.now() / 1000) + 90).run();
+          const response = redirect(`${relayOrigin}/__kaden_launch?ticket=${ticket}`, 303);
+          response.headers.set('Cache-Control', 'no-store');
+          response.headers.set('Referrer-Policy', 'no-referrer');
+          return response;
+        }
         return proxyPage(url.searchParams.get('url'), origin);
       }
       if (path === '/asset' && request.method === 'GET') {
@@ -83,6 +96,11 @@ function b64url(bytes) {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function hashTicket(ticket) {
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(ticket));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function fromB64url(value) {
@@ -305,10 +323,29 @@ const css = `
   .error-content{max-width:800px;padding:clamp(72px,12vh,135px) 0}.error-content h1{font-size:clamp(50px,7vw,88px)}.error-content p{max-width:560px;color:var(--muted);font-size:18px;line-height:1.7}.error-content .reason{display:inline-block;margin:18px 0 12px;padding:13px 17px;border:1px solid #ffffff2b;border-radius:12px;background:#ffffff0b;color:#f0eaff;font-size:14px}.back-link{display:inline-flex;align-items:center;gap:12px;margin-top:28px;padding:15px 21px;border-radius:12px;background:var(--mint);color:#0c2331;text-decoration:none;font-weight:850}.back-link:hover{filter:brightness(1.1)}.footer{padding:0 0 32px;color:#79809d;font-size:12px}
   @media(max-width:800px){.frame{width:min(620px,calc(100% - 36px))}.nav{height:75px}.nav-status{font-size:9px;letter-spacing:.1em}.layout{grid-template-columns:1fr;gap:38px;padding:60px 0 70px}.hero h1{font-size:clamp(54px,12vw,75px)}.lede{font-size:16px}.features{margin-top:26px}.panel{padding:25px}.glyph{margin-top:28px}.error-content{padding:80px 0}}
   @media(max-width:430px){.nav-status{display:none}.hero h1{font-size:53px}.panel-top{font-size:10px}.account{max-width:140px}.panel-foot{align-items:flex-start}.footer{line-height:1.5}}
+  :root{--ink:#f7f7f7;--muted:#aaa;--line:#4d4d4d;--mint:#f5f5f5;--violet:#ccc}
+  body{background:radial-gradient(ellipse 45% 50% at 2% 5%,#29292966,transparent 75%),#080808}
+  body:before{opacity:.14;background-image:linear-gradient(#bcbcbc22 1px,transparent 1px),linear-gradient(90deg,#bcbcbc22 1px,transparent 1px)}
+  .brand-mark{border-color:#eee;background:#ececec;color:#080808;box-shadow:none}
+  .brand-mark svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:6;stroke-linejoin:round}
+  .brand b,.nav-status,.eyebrow,.feature strong,.text-link,.logout button{color:#e4e4e4}
+  .nav-status:before,.eyebrow:before{background:#fff;box-shadow:0 0 13px #aaa}
+  .hero h1 span{background:linear-gradient(100deg,#fff,#9c9c9c);background-clip:text;color:transparent}
+  .feature{border-color:#6b6b6b;background:#ffffff08;color:#ddd}
+  .panel{border-color:#777;background:linear-gradient(145deg,#1c1c1c,#101010 72%);box-shadow:0 32px 100px #000a,inset 0 1px #ffffff1a}
+  .panel:before{background:#d8d8d833}
+  .panel-top,.account,.panel label{color:#e8e8e8}
+  .account{border-color:#777;background:#ffffff0d}
+  .glyph{border-color:#ddd;background:linear-gradient(145deg,#777,#333);box-shadow:0 14px 34px #ffffff12}
+  .panel input:not([type=hidden]){border-color:#777;background:#0a0a0a}
+  .panel input::placeholder,.panel-foot,.footer{color:#aaa}
+  .primary,.back-link{background:#f1f1f1;color:#0a0a0a;box-shadow:0 12px 30px #ffffff15}
+  .alert{border-color:#aaa;background:#ffffff12;color:#eee}
+  .error-content .reason{border-color:#777;background:#ffffff0b;color:#eee}
 `;
 
 function page(title, content, status = 200) {
-  const shell = `<div class="frame"><header class="nav"><a class="brand" href="/app"><span class="brand-mark">K</span><span>Kadens <b>propxy</b></span></a><span class="nav-status">PRIVATE BROWSING SPACE</span></header><main>${content}</main><footer class="footer">Kadens propxy · Public pages work best</footer></div>`;
+  const shell = `<div class="frame"><header class="nav"><a class="brand" href="/app"><span class="brand-mark"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg></span><span>Kadens <b>propxy</b></span></a><span class="nav-status">PRIVATE BROWSING SPACE</span></header><main>${content}</main><footer class="footer">Kadens propxy · Public pages work best</footer></div>`;
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeHtml(title)} · Kadens propxy</title><style>${css}</style></head><body>${shell}</body></html>`, {
     status, headers: proxyHeaders('text/html; charset=utf-8')
   });
