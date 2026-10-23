@@ -2,15 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { claimKey, hashKey, hasAccess, normalizeTarget } from '../src/core.js';
 import worker from '../src/worker.js';
+import relayWorker from '../relay/worker.js';
 
 function fakeDb(hashes) {
   const owners = new Map(hashes.map(hash => [hash, null]));
+  const tickets = new Map();
   return {
     prepare(sql) {
       return {
         bind(...args) {
           return {
             async run() {
+              if (sql.startsWith('INSERT INTO relay_tickets')) {
+                const [hash, owner, target, expires] = args;
+                tickets.set(hash, { github_user_id: owner, target_url: target, expires_at: expires });
+                return { meta: { changes: 1 } };
+              }
               assert.match(sql, /^UPDATE/);
               const [owner, hash] = args;
               if (!owners.has(hash) || owners.get(hash) !== null) return { meta: { changes: 0 } };
@@ -20,6 +27,14 @@ function fakeDb(hashes) {
             async first() {
               if (sql.includes('WHERE key_hash')) return owners.has(args[0]) ? { github_user_id: owners.get(args[0]) } : null;
               return [...owners.values()].includes(args[0]) ? { allowed: 1 } : null;
+            },
+            async all() {
+              assert.match(sql, /^DELETE FROM relay_tickets/);
+              const [hash, now] = args;
+              const row = tickets.get(hash);
+              if (!row || row.expires_at < now) return { results: [] };
+              tickets.delete(hash);
+              return { results: [row] };
             }
           };
         }
@@ -48,7 +63,8 @@ test('URL validation permits public web links and blocks private targets', () =>
 test('GitHub sign-in sets a session and the claimed key unlocks browsing', async () => {
   const origin = 'https://kadens-propxy.example.workers.dev';
   const db = fakeDb([await hashKey('example-secret')]);
-  const env = { DB: db, GITHUB_CLIENT_ID: 'client', GITHUB_CLIENT_SECRET: 'secret', SESSION_SECRET: 'a-long-test-only-session-secret' };
+  const relayOrigin = 'https://kadens-propxy-relay.example.workers.dev';
+  const env = { DB: db, GITHUB_CLIENT_ID: 'client', GITHUB_CLIENT_SECRET: 'secret', SESSION_SECRET: 'a-long-test-only-session-secret', RELAY_URL: relayOrigin };
   const priorFetch = globalThis.fetch;
   try {
     globalThis.fetch = async input => {
@@ -93,6 +109,24 @@ test('GitHub sign-in sets a session and the claimed key unlocks browsing', async
     const appHtml = await after.text();
     assert.match(appHtml, /Where to next\?/);
     assert.match(appHtml, /name="form_token"/);
+    assert.match(appHtml, /<svg viewBox="0 0 100 100"/);
+    const browse = await worker.fetch(new Request(`${origin}/browse?url=https%3A%2F%2Fexample.com%2F`, { headers: { Cookie: sessionCookie } }), env);
+    assert.equal(browse.status, 303);
+    assert.equal(browse.headers.get('cache-control'), 'no-store');
+    const launchUrl = browse.headers.get('location');
+    assert.match(launchUrl, /^https:\/\/kadens-propxy-relay\.example\.workers\.dev\/__kaden_launch\?ticket=/);
+    const relayEnv = { DB: db, RELAY_SECRET: 'a-long-test-only-relay-secret', APP_URL: `${origin}/app` };
+    const launch = await relayWorker.fetch(new Request(launchUrl), relayEnv, {});
+    assert.equal(launch.status, 303);
+    assert.equal(launch.headers.get('location'), `${relayOrigin}/https://example.com/`);
+    const relayCookie = launch.headers.get('set-cookie').split(';')[0];
+    assert.match(relayCookie, /^__Host-kp_relay=/);
+    const replay = await relayWorker.fetch(new Request(launchUrl), relayEnv, {});
+    assert.equal(replay.status, 403);
+    const privateTarget = await relayWorker.fetch(new Request(`${relayOrigin}/https://127.0.0.1/`, { headers: { Cookie: relayCookie } }), relayEnv, {});
+    assert.equal(privateTarget.status, 400);
+    const anonymous = await relayWorker.fetch(new Request(`${relayOrigin}/https://example.com/`), relayEnv, {});
+    assert.equal(anonymous.status, 302);
     const logout = await worker.fetch(new Request(`${origin}/logout`, {
       method: 'POST',
       headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
