@@ -26,7 +26,7 @@ You need a GitHub account, a Cloudflare account, and Node.js with npm.
 4. Run `npx wrangler d1 execute kadens-propxy-keys --remote --file=schema.sql` to create and seed the two key rows. Run this **once before keys are claimed**. It uses `INSERT OR IGNORE`, so rerunning it will not reset claims.
 5. Run `npx wrangler deploy`. Note the `https://…workers.dev` URL.
 6. In GitHub **Settings → Developer settings → OAuth Apps**, create a new OAuth app. Use the Pages URL as the homepage and `https://YOUR-WORKER-URL/oauth/callback` as its authorization callback. This app only reads the signed-in account's public identity; it does not request repository scopes.
-7. Save the OAuth client ID and client secret to the Worker with `npx wrangler secret put GITHUB_CLIENT_ID` and `npx wrangler secret put GITHUB_CLIENT_SECRET`.
+7. Put the public OAuth client ID in `wrangler.toml` as `GITHUB_CLIENT_ID`, and save the private client secret to the Worker with `npx wrangler secret put GITHUB_CLIENT_SECRET`.
 8. Generate a random session signing secret with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, then save it with `npx wrangler secret put SESSION_SECRET`.
 9. Replace the Worker URL in `docs/config.js`. Replace `SITE_URL` in `wrangler.toml` with the exact Pages URL. Commit and push those edits, then run `npx wrangler deploy` again.
 10. Open the Pages URL, click **Open proxy**, sign in, claim a key, and paste a URL. Give each key only to its intended recipient.
