@@ -127,7 +127,12 @@ test('Google sign-in, key redemption, and full-page relay launch', async () => {
     const claim = await worker.fetch(new Request(`${origin}/claim`, { method: 'POST', headers: { Cookie: sessionCookie }, body: new URLSearchParams({ key: 'example-secret', form_token: formToken }) }), env);
     assert.equal(claim.status, 303);
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
-    assert.match(await after.text(), /Search or enter a URL/);
+    const appHtml = await after.text();
+    assert.match(appHtml, /Search or enter a URL/);
+    assert.match(appHtml, /src="\/ui\.js"/);
+    const directGoogle = await worker.fetch(new Request(`${origin}/browse?url=https%3A%2F%2Fgoogle.com%2F`, { headers: { Cookie: sessionCookie } }), env);
+    assert.equal(directGoogle.status, 303);
+    assert.equal(directGoogle.headers.get('location'), 'https://google.com/');
     const browse = await worker.fetch(new Request(`${origin}/browse?url=example.com`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(browse.status, 303);
     const launchUrl = browse.headers.get('location');
