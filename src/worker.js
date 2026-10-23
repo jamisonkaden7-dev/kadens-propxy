@@ -19,7 +19,9 @@ export default {
 
       const user = await readSession(request, env.SESSION_SECRET);
       if (path === '/logout' && request.method === 'POST') {
-        if (!sameOriginPost(request, origin)) return errorPage('Request blocked', 403);
+        if (!user) return redirect(`${origin}/login`, 303);
+        const form = await request.formData();
+        if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
         const response = redirect(`${origin}/app`, 303);
         response.headers.set('Set-Cookie', cookie('__Host-kp_session', '', 0));
         return response;
@@ -27,16 +29,18 @@ export default {
       if (path === '/' && request.method === 'GET') return Response.redirect(`${origin}/app`, 302);
       if (path === '/app' && request.method === 'GET') {
         if (!user) return Response.redirect(`${origin}/login`, 302);
-        return (await hasAccess(env.DB, user.id)) ? appPage(user, env) : claimPage(user);
+        const formToken = await makeFormToken(request, env.SESSION_SECRET);
+        return (await hasAccess(env.DB, user.id)) ? appPage(user, env, formToken) : claimPage(user, formToken);
       }
       if (path === '/claim' && request.method === 'POST') {
         if (!user) return Response.redirect(`${origin}/login`, 303);
-        if (!sameOriginPost(request, origin)) return errorPage('Request blocked', 403);
         const form = await request.formData();
+        if (!(await validFormToken(request, env.SESSION_SECRET, form))) return errorPage('This form could not be verified. Please go back and try again.', 403);
         const key = String(form.get('key') || '').trim();
         const status = await claimKey(env.DB, key, user.id);
         if (status === 'claimed' || status === 'owned') return Response.redirect(`${origin}/app`, 303);
-        return claimPage(user, status === 'taken' ? 'That key has already been claimed by another account.' : 'That key is not valid.', 400);
+        const formToken = await makeFormToken(request, env.SESSION_SECRET);
+        return claimPage(user, formToken, status === 'taken' ? 'That key has already been claimed by another account.' : 'That key is not valid.', 400);
       }
       if (path === '/browse' && request.method === 'GET') {
         if (!user) return Response.redirect(`${origin}/login`, 302);
@@ -61,10 +65,6 @@ export default {
     }
   }
 };
-
-function sameOriginPost(request, origin) {
-  return request.headers.get('Origin') === origin;
-}
 
 function redirect(location, status) {
   return new Response(null, { status, headers: { Location: location } });
@@ -92,6 +92,22 @@ function fromB64url(value) {
 
 async function hmacKey(secret) {
   return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+async function makeFormToken(request, secret) {
+  const session = getCookie(request, '__Host-kp_session');
+  if (!session) return '';
+  const signature = await crypto.subtle.sign('HMAC', await hmacKey(secret), encoder.encode(`form:${session}`));
+  return b64url(new Uint8Array(signature));
+}
+
+async function validFormToken(request, secret, form) {
+  const session = getCookie(request, '__Host-kp_session');
+  const token = String(form.get('form_token') || '');
+  if (!session || !/^[A-Za-z0-9_-]{43}$/.test(token)) return false;
+  try {
+    return await crypto.subtle.verify('HMAC', await hmacKey(secret), fromB64url(token), encoder.encode(`form:${session}`));
+  } catch { return false; }
 }
 
 async function makeSession(identity, secret) {
@@ -279,31 +295,38 @@ function escapeHtml(value) {
 }
 
 const css = `
-  :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif}*{box-sizing:border-box}
-  body{margin:0;min-height:100vh;color:#edf4ff;background:radial-gradient(circle at 15% 0,#203c79,transparent 35%),#080e20}
-  main{width:min(680px,calc(100% - 32px));margin:9vh auto;padding:38px;border:1px solid #375079;border-radius:22px;background:#101a34}
-  h1{font-size:clamp(2rem,6vw,3.4rem);letter-spacing:-.055em;margin:0 0 12px}p{color:#b9c9e1;line-height:1.6}
-  form{margin-top:25px}label{display:block;font-weight:700;margin:0 0 9px}input{width:100%;padding:15px 16px;border:1px solid #51678b;border-radius:10px;background:#0a1226;color:#fff;font:inherit}
-  button,.button{display:inline-block;margin-top:14px;padding:13px 21px;border:0;border-radius:10px;background:#65e3d0;color:#09233a;font:inherit;font-weight:800;text-decoration:none;cursor:pointer}
-  button:hover,.button:hover{background:#89f3e3}.muted{font-size:.92rem;color:#8fa4c6}.alert{padding:12px 15px;border-radius:10px;background:#663047;color:#fff}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:12px}.logout{margin:0}.logout button{margin:0;background:transparent;color:#b9c9e1;border:1px solid #51678b}
+  :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--ink:#f5f5ff;--muted:#aeb5d1;--line:#323751;--mint:#7ff0d3;--violet:#a78bfa}
+  *{box-sizing:border-box}html{min-height:100%}body{margin:0;min-height:100vh;overflow-x:hidden;color:var(--ink);background:radial-gradient(ellipse 42% 48% at 6% 10%,#3a2f7866,transparent 72%),radial-gradient(ellipse 42% 50% at 98% 90%,#166c7166,transparent 70%),#090b18}
+  body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(#8890bd22 1px,transparent 1px),linear-gradient(90deg,#8890bd22 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(to bottom,black,transparent 88%)}
+  a{color:inherit}button,input{font:inherit}button{cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--mint);outline-offset:4px}
+  .frame{position:relative;width:min(1180px,calc(100% - 48px));margin:auto}.nav{height:94px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff20}.brand{display:inline-flex;align-items:center;gap:12px;text-decoration:none;font-size:19px;font-weight:800;letter-spacing:-.04em}.brand-mark{width:38px;height:38px;border:1px solid #c8baff80;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#9e83ff,#5fdaeb);color:#101326;font-size:22px;font-weight:900;box-shadow:0 8px 30px #805dff55}.brand b{color:var(--mint)}.nav-status{display:inline-flex;gap:9px;align-items:center;color:#c8d0e8;font-size:11px;font-weight:800;letter-spacing:.19em}.nav-status:before,.eyebrow:before{content:"";width:7px;height:7px;flex:none;border-radius:50%;background:var(--mint);box-shadow:0 0 16px var(--mint)}
+  main{min-height:calc(100vh - 160px)}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,475px);gap:clamp(42px,9vw,130px);align-items:center;padding:clamp(65px,10vh,125px) 0 90px}.eyebrow{display:flex;align-items:center;gap:12px;color:#c4b4ff;font-size:11px;font-weight:800;letter-spacing:.23em;text-transform:uppercase}.hero h1,.error-content h1{font-size:clamp(54px,6.7vw,94px);line-height:.99;letter-spacing:-.075em;margin:24px 0 25px;font-weight:850}.hero h1 span{background:linear-gradient(100deg,#cbbcff 5%,#7ff0d3 88%);color:transparent;background-clip:text}.lede{max-width:530px;color:var(--muted);font-size:18px;line-height:1.72}.features{display:flex;flex-wrap:wrap;gap:12px;margin-top:38px}.feature{border:1px solid #47465d;background:#ffffff08;border-radius:999px;padding:10px 14px;color:#d1d4e7;font-size:12px;font-weight:650}.feature strong{color:var(--mint);font-weight:800;margin-right:7px}
+  .panel{padding:30px;border:1px solid #ffffff30;border-radius:28px;background:linear-gradient(145deg,#1b1d35ee,#111525f5 72%);box-shadow:0 32px 100px #0008,inset 0 1px #ffffff1a;position:relative;overflow:hidden}.panel:before{content:"";position:absolute;width:240px;height:240px;right:-120px;top:-135px;background:#866bff55;filter:blur(78px);pointer-events:none}.panel>*{position:relative}.panel-top{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#bfc4dd;font-size:12px;font-weight:800;letter-spacing:.13em}.account{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #69617e;background:#ffffff09;border-radius:999px;padding:8px 12px;color:#eee9ff;letter-spacing:0;font-weight:700}.glyph{width:54px;height:54px;display:grid;place-items:center;margin:42px 0 22px;border:1px solid #b4a3ff70;border-radius:18px;background:linear-gradient(145deg,#7861c9,#3a6576);color:white;font-size:28px;box-shadow:0 14px 34px #8d72ff33}.panel h2{font-size:30px;letter-spacing:-.055em;line-height:1.1;margin:0 0 10px}.panel p{color:var(--muted);line-height:1.6;margin:0 0 25px;font-size:14px}.panel label{display:block;color:#e7e9f8;font-size:13px;font-weight:750;margin-bottom:10px}.panel input:not([type=hidden]){width:100%;height:55px;padding:0 17px;border:1px solid #62657f;border-radius:13px;background:#0c1021;color:white;box-shadow:inset 0 1px 4px #0005}.panel input::placeholder{color:#7e849e}.primary{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:55px;margin-top:14px;padding:0 18px;border:0;border-radius:13px;background:linear-gradient(105deg,#96f3d4,#82d9ef);color:#0c2331;font-weight:850;box-shadow:0 12px 30px #56dcc42a;transition:transform .2s,filter .2s}.primary:hover{transform:translateY(-2px);filter:brightness(1.05)}.primary span{font-size:21px}.panel-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:30px;padding-top:22px;border-top:1px solid #ffffff1c;color:#969dbb;font-size:12px}.logout{margin:0}.logout button{border:0;background:none;padding:7px 0;color:#c8b4ff;font-size:12px;font-weight:750}.logout button:hover{text-decoration:underline}.alert{padding:12px 14px;margin-bottom:20px;border:1px solid #e587a266;border-radius:11px;background:#79334b55;color:#ffd8e0;font-size:13px;line-height:1.5}.text-link{color:var(--mint);text-decoration:none}.text-link:hover{text-decoration:underline}
+  .error-content{max-width:800px;padding:clamp(72px,12vh,135px) 0}.error-content h1{font-size:clamp(50px,7vw,88px)}.error-content p{max-width:560px;color:var(--muted);font-size:18px;line-height:1.7}.error-content .reason{display:inline-block;margin:18px 0 12px;padding:13px 17px;border:1px solid #ffffff2b;border-radius:12px;background:#ffffff0b;color:#f0eaff;font-size:14px}.back-link{display:inline-flex;align-items:center;gap:12px;margin-top:28px;padding:15px 21px;border-radius:12px;background:var(--mint);color:#0c2331;text-decoration:none;font-weight:850}.back-link:hover{filter:brightness(1.1)}.footer{padding:0 0 32px;color:#79809d;font-size:12px}
+  @media(max-width:800px){.frame{width:min(620px,calc(100% - 36px))}.nav{height:75px}.nav-status{font-size:9px;letter-spacing:.1em}.layout{grid-template-columns:1fr;gap:38px;padding:60px 0 70px}.hero h1{font-size:clamp(54px,12vw,75px)}.lede{font-size:16px}.features{margin-top:26px}.panel{padding:25px}.glyph{margin-top:28px}.error-content{padding:80px 0}}
+  @media(max-width:430px){.nav-status{display:none}.hero h1{font-size:53px}.panel-top{font-size:10px}.account{max-width:140px}.panel-foot{align-items:flex-start}.footer{line-height:1.5}}
 `;
 
 function page(title, content, status = 200) {
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeHtml(title)} · Kadens propxy</title><style>${css}</style></head><body><main>${content}</main></body></html>`, {
+  const shell = `<div class="frame"><header class="nav"><a class="brand" href="/app"><span class="brand-mark">K</span><span>Kadens <b>propxy</b></span></a><span class="nav-status">PRIVATE BROWSING SPACE</span></header><main>${content}</main><footer class="footer">Kadens propxy · Public pages work best</footer></div>`;
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeHtml(title)} · Kadens propxy</title><style>${css}</style></head><body>${shell}</body></html>`, {
     status, headers: proxyHeaders('text/html; charset=utf-8')
   });
 }
 
 function errorPage(message, status) {
-  return page('Error', `<h1>Could not open page</h1><p>${escapeHtml(message)}</p><a class="button" href="/app">Back to Kadens propxy</a>`, status);
+  return page('Could not open page', `<section class="error-content"><div class="eyebrow">A small detour</div><h1>That link hit<br>a snag.</h1><p>We could not complete that request. Here is what happened:</p><div class="reason">${escapeHtml(message)}</div><br><a class="back-link" href="/app">Back to Kadens propxy <span aria-hidden="true">↗</span></a></section>`, status);
 }
 
-function claimPage(user, error = '', status = 200) {
-  return page('Claim a key', `<div class="row"><strong>Kadens propxy</strong><form class="logout" action="/logout" method="post"><button type="submit">Sign out</button></form></div><h1>Claim your key</h1><p>Signed in as <strong>${escapeHtml(user.login)}</strong>. Each key can be claimed by one GitHub account. After claiming it, only that account can enter.</p>${error ? `<p class="alert">${escapeHtml(error)}</p>` : ''}<form action="/claim" method="post"><label for="key">Access key</label><input id="key" name="key" type="password" maxlength="100" required autocomplete="off"><button type="submit">Claim key</button></form><p class="muted">A key already claimed by your account continues to work for you.</p>`, status);
+function logoutForm(formToken) {
+  return `<form class="logout" action="/logout" method="post"><input type="hidden" name="form_token" value="${formToken}"><button type="submit">Sign out</button></form>`;
 }
 
-function appPage(user, env) {
-  const home = env.SITE_URL && !env.SITE_URL.includes('YOUR-GITHUB-USERNAME') ? `<a href="${escapeHtml(env.SITE_URL)}">GitHub Pages home</a> · ` : '';
-  return page('Browse', `<div class="row"><strong>Kadens propxy</strong><form class="logout" action="/logout" method="post"><button type="submit">Sign out</button></form></div><h1>Where to?</h1><p>Signed in as <strong>${escapeHtml(user.login)}</strong>. Paste an HTTP or HTTPS link to open it through the proxy.</p><form action="/browse" method="get"><label for="url">Website URL</label><input id="url" name="url" type="url" inputmode="url" placeholder="https://example.com" required autofocus><button type="submit">Open website</button></form><p class="muted">${home}Static pages work best. JavaScript, accounts, video streams, and some interactive sites may not work.</p>`);
+function claimPage(user, formToken, error = '', status = 200) {
+  return page('Claim a key', `<div class="layout"><section class="hero"><div class="eyebrow">Your private pass starts here</div><h1>One key.<br><span>Your space.</span></h1><p class="lede">Sign in once, claim your invite, and keep your browsing space tied to your GitHub account.</p><div class="features"><span class="feature"><strong>01</strong> Account-bound access</span><span class="feature"><strong>02</strong> One-time claim</span></div></section><section class="panel"><div class="panel-top"><span>ACCESS / 01 OF 02</span><span class="account">@${escapeHtml(user.login)}</span></div><div class="glyph" aria-hidden="true">✦</div><h2>Unlock your access</h2><p>Enter one of the two invite keys. The first GitHub account to claim a key keeps it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/claim" method="post"><input type="hidden" name="form_token" value="${formToken}"><label for="key">Invite key</label><input id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key here" autofocus><button class="primary" type="submit">Claim access <span aria-hidden="true">↗</span></button></form><div class="panel-foot"><span>Signed in as @${escapeHtml(user.login)}</span>${logoutForm(formToken)}</div></section></div>`, status);
+}
+
+function appPage(user, env, formToken) {
+  const home = env.SITE_URL && !env.SITE_URL.includes('YOUR-GITHUB-USERNAME') ? `<a class="text-link" href="${escapeHtml(env.SITE_URL)}">View launch page ↗</a>` : 'Your browsing space is ready';
+  return page('Browse', `<div class="layout"><section class="hero"><div class="eyebrow">Access unlocked</div><h1>Pick a link.<br><span>Go explore.</span></h1><p class="lede">Paste a public website address and open it in your private browsing space.</p><div class="features"><span class="feature"><strong>✓</strong> Key claimed</span><span class="feature"><strong>↗</strong> Ready to browse</span></div></section><section class="panel"><div class="panel-top"><span>BROWSE / 02 OF 02</span><span class="account">@${escapeHtml(user.login)}</span></div><div class="glyph" aria-hidden="true">↗</div><h2>Where to next?</h2><p>Enter an HTTP or HTTPS link below. Public pages and articles work best.</p><form action="/browse" method="get"><label for="url">Website address</label><input id="url" name="url" type="url" inputmode="url" placeholder="https://example.com" required autofocus><button class="primary" type="submit">Open website <span aria-hidden="true">↗</span></button></form><div class="panel-foot"><span>${home}</span>${logoutForm(formToken)}</div></section></div>`, 200);
 }
