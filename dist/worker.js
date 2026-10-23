@@ -117,7 +117,7 @@ export default {
       const origin = url.origin;
       const path = url.pathname;
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
-      if (path === '/ui.js' && request.method === 'GET') return new Response("document.querySelectorAll('form.search').forEach(form=>form.addEventListener('submit',()=>{const button=form.querySelector('button[type=submit]');if(!button)return;button.textContent='Opening…';setTimeout(()=>{button.textContent='Open ↗'},8000)}));", { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
+      if (path === '/ui.js' && request.method === 'GET') return new Response("document.querySelectorAll('form.search').forEach(form=>form.addEventListener('submit',()=>{const button=form.querySelector('button[type=submit]');if(!button)return;const original=button.textContent;button.textContent='Opening…';setTimeout(()=>{button.textContent=original},8000)}));", { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
       if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? googleLoginPage(env, origin) : startLogin(env, origin);
       if (path === '/login/github' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return startLogin(env, origin);
       if (path === '/oauth/callback' && request.method === 'GET' && env.GITHUB_CLIENT_ID) return finishLogin(request, env, origin);
@@ -134,6 +134,12 @@ export default {
         return response;
       }
       if (path === '/' && request.method === 'GET') return Response.redirect(`${origin}/app`, 302);
+      if (path === '/search' && request.method === 'GET') {
+        const query = String(url.searchParams.get('q') || '').trim().slice(0, 200);
+        if (!query) return Response.redirect(`${origin}/app`, 303);
+        const target = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+        return redirect(`${origin}/browse?url=${encodeURIComponent(target)}`, 303);
+      }
       if (path === '/app' && request.method === 'GET') {
         if (!user) return Response.redirect(`${origin}/login`, 302);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
@@ -165,10 +171,7 @@ export default {
         if (!allowed) return Response.redirect(`${origin}/app`, 302);
         const target = resolveDestination(url.searchParams.get('url'));
         if (['google.com', 'www.google.com'].includes(target.hostname)) {
-          const response = redirect(target.href, 303);
-          response.headers.set('Cache-Control', 'no-store');
-          response.headers.set('Referrer-Policy', 'no-referrer');
-          return response;
+          return googleChoicePage(target);
         }
         if (env.RELAY_URL) {
           const relayOrigin = new URL(env.RELAY_URL).origin;
@@ -574,11 +577,16 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Type youtube to open it through isRecool. Google opens directly; unknown words search DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
+  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Type youtube to open it through isRecool. Typing google opens isRecool search; other unknown words use DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200, false, true);
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
     response.headers.set('Content-Security-Policy', `${response.headers.get('Content-Security-Policy')}; connect-src ${relayOrigin}`);
   }
   return response;
+}
+
+function googleChoicePage(target) {
+  const query = target.searchParams.get('q') || '';
+  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Search the web.</h1><p class="subhead">Google blocks this relay. Search through isRecool with DuckDuckGo, or choose to open Google directly.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><button class="go" type="submit">Search ↗</button></form><div class="actions"><a class="chip" href="https://www.google.com/" rel="noreferrer">Open Google directly ↗</a><a class="chip" href="/app">← Back to isRecool</a></div></section>`, 200, false, true);
 }
