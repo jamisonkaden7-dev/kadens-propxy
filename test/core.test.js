@@ -66,15 +66,31 @@ test('GitHub sign-in sets a session and the claimed key unlocks browsing', async
     const sessionCookie = callback.headers.getSetCookie().find(value => value.startsWith('__Host-kp_session=')).split(';')[0];
 
     const before = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
-    assert.match(await before.text(), /Claim your key/);
+    const claimPage = await before.text();
+    assert.match(claimPage, /Unlock your access/);
+    const formToken = claimPage.match(/name="form_token" value="([^"]+)"/)?.[1];
+    assert.ok(formToken);
+    const blocked = await worker.fetch(new Request(`${origin}/claim`, {
+      method: 'POST',
+      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'key=example-secret'
+    }), env);
+    assert.equal(blocked.status, 403);
+    const invalid = await worker.fetch(new Request(`${origin}/claim`, {
+      method: 'POST',
+      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ key: 'wrong-key', form_token: formToken })
+    }), env);
+    assert.equal(invalid.status, 400);
+    assert.match(await invalid.text(), /That key is not valid/);
     const claim = await worker.fetch(new Request(`${origin}/claim`, {
       method: 'POST',
-      headers: { Cookie: sessionCookie, Origin: origin, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'key=example-secret'
+      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ key: 'example-secret', form_token: formToken })
     }), env);
     assert.equal(claim.status, 303);
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
-    assert.match(await after.text(), /Where to\?/);
+    assert.match(await after.text(), /Where to next\?/);
   } finally {
     globalThis.fetch = priorFetch;
   }
