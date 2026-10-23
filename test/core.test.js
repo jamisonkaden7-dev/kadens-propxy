@@ -1,0 +1,81 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { claimKey, hashKey, hasAccess, normalizeTarget } from '../src/core.js';
+import worker from '../src/worker.js';
+
+function fakeDb(hashes) {
+  const owners = new Map(hashes.map(hash => [hash, null]));
+  return {
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            async run() {
+              assert.match(sql, /^UPDATE/);
+              const [owner, hash] = args;
+              if (!owners.has(hash) || owners.get(hash) !== null) return { meta: { changes: 0 } };
+              owners.set(hash, owner);
+              return { meta: { changes: 1 } };
+            },
+            async first() {
+              if (sql.includes('WHERE key_hash')) return owners.has(args[0]) ? { github_user_id: owners.get(args[0]) } : null;
+              return [...owners.values()].includes(args[0]) ? { allowed: 1 } : null;
+            }
+          };
+        }
+      };
+    }
+  };
+}
+
+test('a key binds to its first GitHub account and cannot move to another', async () => {
+  const db = fakeDb([await hashKey('example-secret')]);
+  assert.equal(await claimKey(db, 'example-secret', 101), 'claimed');
+  assert.equal(await claimKey(db, 'example-secret', 101), 'owned');
+  assert.equal(await claimKey(db, 'example-secret', 202), 'taken');
+  assert.equal(await hasAccess(db, 101), true);
+  assert.equal(await hasAccess(db, 202), false);
+  assert.equal(await claimKey(db, 'unknown', 202), 'invalid');
+});
+
+test('URL validation permits public web links and blocks private targets', () => {
+  assert.equal(normalizeTarget('https://example.com/a').href, 'https://example.com/a');
+  for (const value of ['http://localhost/', 'http://127.0.0.1/', 'http://10.1.2.3/', 'http://192.168.0.1/', 'http://169.254.10.1/', 'http://[::1]/', 'file:///etc/passwd', 'https://user:pass@example.com/']) {
+    assert.throws(() => normalizeTarget(value), value);
+  }
+});
+
+test('GitHub sign-in sets a session and the claimed key unlocks browsing', async () => {
+  const origin = 'https://kadens-propxy.example.workers.dev';
+  const db = fakeDb([await hashKey('example-secret')]);
+  const env = { DB: db, GITHUB_CLIENT_ID: 'client', GITHUB_CLIENT_SECRET: 'secret', SESSION_SECRET: 'a-long-test-only-session-secret' };
+  const priorFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async input => {
+      const url = String(input);
+      if (url.includes('/login/oauth/access_token')) return Response.json({ access_token: 'sample-token' });
+      if (url.includes('/user')) return Response.json({ id: 101, login: 'sample-user' });
+      throw new Error(`Unexpected fetch: ${url}`);
+    };
+    const login = await worker.fetch(new Request(`${origin}/login`), env);
+    assert.equal(login.status, 302);
+    const loginCookies = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+    const state = new URL(login.headers.get('location')).searchParams.get('state');
+    const callback = await worker.fetch(new Request(`${origin}/oauth/callback?code=sample&state=${state}`, { headers: { Cookie: loginCookies } }), env);
+    assert.equal(callback.status, 303);
+    const sessionCookie = callback.headers.getSetCookie().find(value => value.startsWith('__Host-kp_session=')).split(';')[0];
+
+    const before = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
+    assert.match(await before.text(), /Claim your key/);
+    const claim = await worker.fetch(new Request(`${origin}/claim`, {
+      method: 'POST',
+      headers: { Cookie: sessionCookie, Origin: origin, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'key=example-secret'
+    }), env);
+    assert.equal(claim.status, 303);
+    const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
+    assert.match(await after.text(), /Where to\?/);
+  } finally {
+    globalThis.fetch = priorFetch;
+  }
+});
