@@ -90,7 +90,16 @@ test('GitHub sign-in sets a session and the claimed key unlocks browsing', async
     }), env);
     assert.equal(claim.status, 303);
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
-    assert.match(await after.text(), /Where to next\?/);
+    const appHtml = await after.text();
+    assert.match(appHtml, /Where to next\?/);
+    assert.match(appHtml, /name="form_token"/);
+    const logout = await worker.fetch(new Request(`${origin}/logout`, {
+      method: 'POST',
+      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ form_token: formToken })
+    }), env);
+    assert.equal(logout.status, 303);
+    assert.match(logout.headers.get('set-cookie'), /Max-Age=0/);
   } finally {
     globalThis.fetch = priorFetch;
   }
