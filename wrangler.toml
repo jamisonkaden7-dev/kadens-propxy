@@ -1,6 +1,13 @@
 name = "kadens-propxy"
 main = "src/worker.js"
-compatibility_date = "2026-10-01"
+compatibility_date = "2026-10-23"
+preview_urls = false
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
 
 [vars]
 # Set this to the exact GitHub Pages URL when the repository is published.
