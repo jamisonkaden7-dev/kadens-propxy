@@ -5,6 +5,7 @@ const RELAY_SESSION_AGE = 6 * 60 * 60;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const COOKIE = '__Host-kp_relay';
+const TARGET_COOKIE = '__Host-kp_target';
 
 export default {
   async fetch(request, env, ctx) {
@@ -21,15 +22,16 @@ export default {
     }
     if (url.pathname === '/') return Response.redirect(env.APP_URL, 302);
 
+    if (isGoogleChallenge(url.pathname)) return googleBlocked(env.APP_URL);
+
     // A proxied page is allowed to request a root-relative path only when its
     // Referer identifies the original public target. Relay then repairs it.
     let target = /^\/(?:https?|wss?):\/\//i.test(url.pathname) ? url.pathname.slice(1) + url.search : null;
     if (!target && !['/__proxy_sw.js', '/favicon.ico', '/robots.txt'].includes(url.pathname)) {
-      try {
-        const ref = new URL(request.headers.get('Referer') || '');
-        if (ref.origin !== url.origin || !/^\/(?:https?|wss?):\/\//i.test(ref.pathname)) return response(404, 'Page not found.');
-        target = ref.pathname.slice(1);
-      } catch { return response(404, 'Page not found.'); }
+      const source = sourceFromReferer(request, url.origin) || sourceFromCookie(request);
+      if (!source) return response(400, 'This page lost its website address. Go back to isRecool and open it again.');
+      target = source + url.pathname + url.search;
+      return Response.redirect(`${url.origin}/${target}`, 302);
     }
     if (target) {
       try {
@@ -37,9 +39,43 @@ export default {
         if (safe.origin === url.origin || safe.origin === new URL(env.APP_URL).origin) return response(400, 'That link cannot be opened.');
       } catch { return response(400, 'That link cannot be opened.'); }
     }
-    return upstream.fetch(request, { ...env, PASSWORD: undefined }, ctx);
+    const upstreamResponse = await upstream.fetch(request, { ...env, PASSWORD: undefined }, ctx);
+    if (isGoogleChallenge(new URL(upstreamResponse.headers.get('Location') || url.href, url.origin).pathname)) return googleBlocked(env.APP_URL);
+    if (target && request.method === 'GET' && (request.headers.get('Sec-Fetch-Mode') === 'navigate' || request.headers.get('Sec-Fetch-Dest') === 'document') &&
+        (upstreamResponse.headers.get('Content-Type') || '').toLowerCase().includes('text/html')) {
+      const original = normalizeTarget(target.replace(/^ws/i, 'http'), undefined, 8000);
+      const headers = new Headers(upstreamResponse.headers);
+      headers.append('Set-Cookie', `${TARGET_COOKIE}=${encodeURIComponent(original.origin)}; Path=/; Max-Age=${RELAY_SESSION_AGE}; HttpOnly; Secure; SameSite=Lax`);
+      headers.set('Cache-Control', 'private, no-store');
+      return new Response(upstreamResponse.body, { status: upstreamResponse.status, statusText: upstreamResponse.statusText, headers });
+    }
+    return upstreamResponse;
   }
 };
+
+function sourceFromReferer(request, relayOrigin) {
+  try {
+    const ref = new URL(request.headers.get('Referer') || '');
+    if (ref.origin !== relayOrigin || !/^\/(?:https?|wss?):\/\//i.test(ref.pathname)) return null;
+    return normalizeTarget(ref.pathname.slice(1).replace(/^ws/i, 'http'), undefined, 8000).origin;
+  } catch { return null; }
+}
+
+function sourceFromCookie(request) {
+  try {
+    const value = getCookie(request, TARGET_COOKIE);
+    return value ? normalizeTarget(decodeURIComponent(value), undefined, 8000).origin : null;
+  } catch { return null; }
+}
+
+function isGoogleChallenge(path) {
+  return /^\/https?:\/\/(?:www\.)?google\.[^/]+\/sorry(?:\/|$)/i.test(path);
+}
+
+function googleBlocked(appUrl) {
+  const body = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google blocked this connection · isRecool</title><style>:root{color-scheme:dark;font:14px/1.5 system-ui}body{margin:0;background:#080808;color:#eee}main{max-width:490px;margin:17vh auto;padding:0 24px}small{color:#999}h1{font-size:30px;letter-spacing:-.04em;line-height:1.1;margin:18px 0 12px}p{color:#aaa;margin:0 0 26px}a{color:#eee;text-decoration:none;border-bottom:1px solid #777;margin-right:22px;padding-bottom:3px}a:hover{border-color:#fff}</style><main><small>isRecool / connection</small><h1>Google blocked this relay.</h1><p>Google is rejecting traffic from the relay's network. Open Google directly, or search with DuckDuckGo through isRecool.</p><a href="https://www.google.com/">Open Google directly ↗</a><a href="${appUrl}">Search with isRecool ↗</a></main></html>`;
+  return new Response(body, { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
+}
 
 async function launch(request, env, url) {
   const ticket = url.searchParams.get('ticket') || '';
@@ -80,13 +116,13 @@ async function launch(request, env, url) {
 }
 
 function response(status, message) {
-  const body = `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>isRecool</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#080808;color:#f1f1f1;font:16px/1.6 system-ui}.card{width:min(520px,calc(100% - 48px));border:1px solid #666;padding:32px}h1{font-size:28px;margin:0 0 12px}a{color:#fff}</style><div class="card"><h1>Could not open page</h1><p>${message}</p><a href="/">Back to isRecool ↗</a></div></html>`;
+  const body = `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>isRecool</title><style>:root{color-scheme:dark;font:14px/1.5 system-ui}body{margin:0;background:#080808;color:#eee}main{max-width:490px;margin:17vh auto;padding:0 24px}small{color:#999}h1{font-size:30px;letter-spacing:-.04em;line-height:1.1;margin:18px 0 12px}p{color:#aaa;margin:0 0 26px}a{color:#eee;text-decoration:none;border-bottom:1px solid #777;padding-bottom:3px}a:hover{border-color:#fff}</style><main><small>isRecool / error</small><h1>Could not open page.</h1><p>${message}</p><a href="/">Back to isRecool ↗</a></main></html>`;
   return new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 }
 
-function getCookie(request) {
-  const part = (request.headers.get('Cookie') || '').split(';').map(x => x.trim()).find(x => x.startsWith(`${COOKIE}=`));
-  return part ? part.slice(COOKIE.length + 1) : null;
+function getCookie(request, name = COOKIE) {
+  const part = (request.headers.get('Cookie') || '').split(';').map(x => x.trim()).find(x => x.startsWith(`${name}=`));
+  return part ? part.slice(name.length + 1) : null;
 }
 
 function b64url(bytes) {

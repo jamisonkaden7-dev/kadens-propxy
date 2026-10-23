@@ -424,7 +424,7 @@ const css = `
 const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg>';
 
 function page(title, content, status = 200, googleScript = false) {
-  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">OPEN WEB / PRIVATE ACCESS</span></header><main>${content}</main><footer class="foot"><span>isRecool · Public websites work best</span><span><a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="https://github.com/jamisonkaden7-dev/kadens-propxy">Source</a> &nbsp;·&nbsp; <a href="/app">Home</a></span></footer></div>`;
+  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">ACCOUNT</span></header><main>${content}</main><footer class="foot"><span>isRecool</span><span><a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="https://github.com/jamisonkaden7-dev/kadens-propxy">Source</a></span></footer></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
   if (googleScript) {
     headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
@@ -438,7 +438,7 @@ function googleWidget(env, origin) {
 }
 
 function googleLoginPage(env, origin) {
-  return page('Sign in', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">Your key, your Google account</div><h1>isRecool.</h1><p class="subhead">Sign in with the Google account that owns your invite key. Your browser will open websites as full pages.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login/github">Already claimed a key with GitHub? Link Google ↗</a></div><p class="info">Use Chrome or another standard browser if Google blocks sign-in inside an embedded browser.</p></section>`, 200, true);
+  return page('Sign in', `<section class="center"><div class="overline">isRecool / account</div><h1>Sign in.</h1><p class="subhead">Use the Google account linked to your key.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login/github">Link an existing GitHub claim ↗</a></div><p class="info">If Google sign-in fails here, open this page in a standard browser.</p></section>`, 200, true);
 }
 
 function privacyPage() {
@@ -446,14 +446,14 @@ function privacyPage() {
 }
 
 async function linkPage(user, env, formToken, origin) {
-  const response = page('Link Google', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">Keep your existing key</div><h1>Link Google.</h1><p class="subhead">Your key is claimed by GitHub account <strong>${escapeHtml(user.login)}</strong>. Sign in with the Google account that should own it from now on.</p>${googleWidget(env, origin)}<p class="info">After linking, use this same Google account to open websites.</p><div class="identity">${logoutForm(formToken)}</div></section>`, 200, true);
+  const response = page('Link Google', `<section class="center"><div class="overline">isRecool / account</div><h1>Link Google.</h1><p class="subhead">The key claimed by <strong>${escapeHtml(user.login)}</strong> will be linked to the Google account you choose.</p>${googleWidget(env, origin)}<div class="identity">${logoutForm(formToken)}</div></section>`, 200, true);
   response.headers.append('Set-Cookie', cookie('__Host-kp_link', '1', 600, 'None'));
   response.headers.append('Set-Cookie', cookie('__Host-kp_session', await makeSession(user, env.SESSION_SECRET), SESSION_AGE, 'None'));
   return response;
 }
 
 function errorPage(message, status) {
-  return page('Could not open page', `<section class="center"><div class="overline">isRecool / Error</div><h1 class="error-title">Couldn’t open it.</h1><p class="subhead">Check the address and try again.</p><p class="reason">${escapeHtml(message)}</p><div class="actions"><a class="chip" href="/app">← Back to isRecool</a></div></section>`, status);
+  return page('Could not open page', `<section class="center"><div class="overline">isRecool / error</div><h1 class="error-title">Couldn’t open it.</h1><p class="reason">${escapeHtml(message)}</p><div class="actions"><a class="chip" href="/app">Back to isRecool ↗</a></div></section>`, status);
 }
 
 function logoutForm(formToken) {
@@ -461,9 +461,9 @@ function logoutForm(formToken) {
 }
 
 function claimPage(user, formToken, error = '', status = 200) {
-  return page('Claim a key', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">One key / One account</div><h1>Claim access.</h1><p class="subhead">Redeem an invite key once. It stays with the account you’re signed in to.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/claim" method="post"><input type="hidden" name="form_token" value="${formToken}"><label class="overline" for="key">Invite key</label><div style="margin-top:15px"><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus></div><button class="key-submit" type="submit">Redeem key ↗</button></form><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, status);
+  return page('Claim a key', `<section class="center"><div class="overline">isRecool / access</div><h1>Redeem key.</h1><p class="subhead">A key can be used once and stays with this Google account.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/claim" method="post"><input type="hidden" name="form_token" value="${formToken}"><label class="overline" for="key">Invite key</label><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus><button class="key-submit" type="submit">Redeem ↗</button></form><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, status);
 }
 
 function appPage(user, env, formToken, pending = '') {
-  return page('Browse', `<section class="center">${star.replace('<svg ', '<svg class="hero-star" ')}<div class="overline">Your gateway is ready</div><h1>isRecool.</h1><p class="subhead">Search or enter a website. It opens in this full browser page.</p><form class="search" action="/browse" method="get" target="_top"><label class="search-icon" for="url" aria-label="Website address">⌕</label><input id="url" name="url" type="text" inputmode="url" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit" aria-label="Open website">↗</button></form><p class="helper">Try <code>example.com</code>, a full URL, or a search phrase.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fgithub.com%2F">GitHub ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Key active · Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200);
+  return page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Open a website.</h1><p class="subhead">Enter an address or search.</p><form class="search" action="/browse" method="get" target="_top"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter a URL" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit">Open ↗</button></form><p class="helper">Some sites block relay traffic. Searches use DuckDuckGo.</p><div class="actions"><a class="chip" href="/browse?url=https%3A%2F%2Fen.wikipedia.org%2F">Wikipedia ↗</a><a class="chip" href="/browse?url=https%3A%2F%2Fexample.com%2F">Example ↗</a></div><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, 200);
 }

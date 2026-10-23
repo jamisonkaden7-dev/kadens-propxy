@@ -121,7 +121,7 @@ test('Google sign-in, key redemption, and full-page relay launch', async () => {
     const sessionCookie = callback.headers.getSetCookie().find(value => value.startsWith('__Host-kp_session=')).split(';')[0];
     const before = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const claimHtml = await before.text();
-    assert.match(claimHtml, /Claim access/);
+    assert.match(claimHtml, /Redeem key/);
     const formToken = claimHtml.match(/name="form_token" value="([^"]+)"/)?.[1];
     assert.ok(formToken);
     const claim = await worker.fetch(new Request(`${origin}/claim`, { method: 'POST', headers: { Cookie: sessionCookie }, body: new URLSearchParams({ key: 'example-secret', form_token: formToken }) }), env);
@@ -139,5 +139,13 @@ test('Google sign-in, key redemption, and full-page relay launch', async () => {
     assert.equal((await relayWorker.fetch(new Request(launchUrl), relayEnv, {})).status, 403);
     const relayCookie = launch.headers.get('set-cookie').split(';')[0];
     assert.equal((await relayWorker.fetch(new Request(`${relayOrigin}/https://127.0.0.1/`, { headers: { Cookie: relayCookie } }), relayEnv, {})).status, 400);
+    const rootRelative = await relayWorker.fetch(new Request(`${relayOrigin}/results?search_query=test`, {
+      headers: { Cookie: `${relayCookie}; __Host-kp_target=${encodeURIComponent('https://duckduckgo.com')}` }
+    }), relayEnv, {});
+    assert.equal(rootRelative.status, 302);
+    assert.equal(rootRelative.headers.get('location'), `${relayOrigin}/https://duckduckgo.com/results?search_query=test`);
+    const googleBlocked = await relayWorker.fetch(new Request(`${relayOrigin}/https://www.google.com/sorry/index`, { headers: { Cookie: relayCookie } }), relayEnv, {});
+    assert.equal(googleBlocked.status, 403);
+    assert.match(await googleBlocked.text(), /Google blocked this relay/);
   } finally { globalThis.fetch = priorFetch; }
 });

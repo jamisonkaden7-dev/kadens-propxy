@@ -45,9 +45,9 @@ Run `node --test` to check account binding, legacy claim linking, address parsin
 
 ## Visual and browser behavior
 
-The loading screen lasts 3.4 seconds, spins the Star of David, and can be skipped with Enter, Escape, or Skip. The page and app use a full-window, centered black/white/grey design with small stars in the background. Reduced-motion users skip the animation.
+The loading screen lasts 3.6 seconds, reveals eight short steps, spins the Star of David, and can be skipped with Enter, Escape, or Skip. The page and app use a compact black/white/grey layout with a faint star pattern. Reduced-motion users skip the animation.
 
-The relay rewrites links, scripts, and asset URLs and caches shared public content. This helps more sites than the original HTML-only proxy, but some sites, particularly video services, logins, CAPTCHAs, and heavily protected apps, can still fail. [Aetheris](https://github.com/mynamescrax/aetheris) uses Scramjet with libcurl/epoxy and states that it needs a VPS; its backend cannot run as a drop-in Cloudflare Worker or GitHub Pages site.
+The relay rewrites links, scripts, and asset URLs and caches shared public content. It also remembers the active site's origin to repair root-relative navigations when a site's referrer is missing. Google may block Cloudflare relay traffic with an unusual-traffic challenge; isRecool then offers direct Google and a return to its DuckDuckGo-based search. Other sites, particularly video services, logins, CAPTCHAs, and heavily protected apps, can still fail. [Aetheris](https://github.com/mynamescrax/aetheris) uses Scramjet with libcurl/epoxy and states that it needs a VPS; its backend cannot run as a drop-in Cloudflare Worker or GitHub Pages site.
 
 ## Relay source and license
 
