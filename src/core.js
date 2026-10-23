@@ -1,8 +1,8 @@
 const encoder = new TextEncoder();
 
-export function normalizeTarget(input, base) {
+export function normalizeTarget(input, base, maxLength = 2048) {
   const raw = String(input || '').trim();
-  if (!raw || raw.length > 2048) throw new Error('Enter a URL under 2,048 characters.');
+  if (!raw || raw.length > maxLength) throw new Error(`Enter a URL under ${maxLength.toLocaleString('en-US')} characters.`);
   let url;
   try { url = new URL(raw, base); } catch { throw new Error('Enter a valid URL.'); }
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP and HTTPS links are supported.');
