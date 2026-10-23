@@ -1,11 +1,15 @@
 CREATE TABLE IF NOT EXISTS access_keys (
   key_hash TEXT PRIMARY KEY,
   github_user_id INTEGER,
+  google_sub TEXT,
   claimed_at TEXT
 );
 
 CREATE INDEX IF NOT EXISTS access_keys_owner_idx
   ON access_keys (github_user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS access_keys_google_owner_idx
+  ON access_keys (google_sub);
 
 CREATE TABLE IF NOT EXISTS relay_tickets (
   token_hash TEXT PRIMARY KEY,
@@ -16,6 +20,16 @@ CREATE TABLE IF NOT EXISTS relay_tickets (
 
 CREATE INDEX IF NOT EXISTS relay_tickets_expiry_idx
   ON relay_tickets (expires_at);
+
+CREATE TABLE IF NOT EXISTS google_relay_tickets (
+  token_hash TEXT PRIMARY KEY,
+  google_sub TEXT NOT NULL,
+  target_url TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS google_relay_tickets_expiry_idx
+  ON google_relay_tickets (expires_at);
 
 -- Only these two hashes are accepted. Keep the original keys out of the public repo.
 INSERT OR IGNORE INTO access_keys (key_hash) VALUES

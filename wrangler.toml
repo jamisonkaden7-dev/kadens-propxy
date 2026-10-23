@@ -13,6 +13,7 @@ enabled = true
 # Set this to the exact GitHub Pages URL when the repository is published.
 SITE_URL = "https://jamisonkaden7-dev.github.io/kadens-propxy/"
 GITHUB_CLIENT_ID = "Ov23li2pSIWHkwQDhSCr"
+GOOGLE_CLIENT_ID = "112376829025-bmkqstcehe20bq19plorr850sj1p0f9i.apps.googleusercontent.com"
 RELAY_URL = "https://kadens-propxy-relay.jamisonkaden7.workers.dev"
 
 [[d1_databases]]

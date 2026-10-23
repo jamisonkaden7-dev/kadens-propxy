@@ -11,6 +11,7 @@ enabled = true
 
 [vars]
 APP_URL = "https://kadens-propxy.jamisonkaden7.workers.dev/app"
+GOOGLE_REQUIRED = "true"
 
 [[d1_databases]]
 binding = "DB"

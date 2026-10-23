@@ -1,47 +1,54 @@
-# Kadens propxy
+# isRecool
 
-A monochrome GitHub Pages launch page, a GitHub sign-in and key app, and a separate Cloudflare Worker relay for opening public websites.
+A monochrome GitHub Pages launch page, Google-bound one-time keys, and a separate Cloudflare Worker relay for opening public websites.
 
 ## Live addresses
 
 - Launch page: <https://jamisonkaden7-dev.github.io/kadens-propxy/>
 - Sign-in and key app: <https://kadens-propxy.jamisonkaden7.workers.dev/app>
-- Browsing relay: <https://kadens-propxy-relay.jamisonkaden7.workers.dev/> (requires a valid launch from the app)
+- Browsing relay: <https://kadens-propxy-relay.jamisonkaden7.workers.dev/>
 
-GitHub Pages serves the static launch page. The two Workers and D1 database provide sign-in, one-time keys, and page fetching. GitHub Pages alone cannot run those server-side features.
+The old deployment names remain in the URLs so existing links keep working. The visible product name is isRecool.
 
-## Access and security
+## Account and key flow
 
-1. A visitor signs in with GitHub. The app uses the stable numeric GitHub user ID.
-2. D1 holds hashes of exactly two invite keys. A key can be claimed once; the first GitHub account keeps it.
-3. After a key owner enters a URL, the app stores a random, 90-second, single-use launch ticket in D1 and redirects to the separate relay Worker.
-4. The relay consumes the ticket atomically, confirms that account still owns a key, and sets a signed, host-only, six-hour relay cookie.
-5. Proxied site scripts run only on the relay origin. They cannot read the app's GitHub session or claim form.
+1. Sign in with Google. The Worker verifies Google's signed ID token and binds a key to Google's stable `sub` account ID, not the changeable email address.
+2. D1 stores hashes of exactly two invite keys. A key can be redeemed only once; signing into the same Google account restores access.
+3. A key already claimed by GitHub can be linked by signing into that GitHub account, then choosing the Google account that should own it. Once Google sign-in is enabled, GitHub alone cannot open websites.
+4. Enter a complete URL, a bare domain such as `example.com`, or a search phrase. Search phrases use DuckDuckGo because Google Search blocks requests from this Cloudflare relay. The app makes a single-use, 90-second launch ticket and sends the browser to the relay as a full-page navigation.
+5. The relay checks the ticket and owner, then grants a signed six-hour cookie on its own host. Proxied page scripts cannot read the sign-in app's session.
 
-The raw invite keys, GitHub OAuth secret, and session signing secrets are not in this repository. The relay rejects private IP addresses, localhost, and URLs with embedded credentials before forwarding.
+The raw invite keys and signing secrets are not stored in the public repository. The relay blocks private IPs, localhost, embedded URL credentials, and nonstandard ports before forwarding.
 
-## Loading screen and speed
+The [privacy page](https://kadens-propxy.jamisonkaden7.workers.dev/privacy) explains how account IDs, sessions, and relayed URLs are handled.
 
-The launch page shows a short Kaden boot sequence on the first visit in a tab. It is black, white, and grey, uses a dotted Star of David instead of the reference video's Y, and can be skipped with Enter, Escape, or the Skip button. Returning visits in the same tab open immediately. The launch page has no external fonts, images, or JavaScript libraries.
+## Google client setup
 
-The relay uses path-embedded target URLs, server-side HTML rewriting, and edge caching for public assets. This improves many script-heavy pages compared with the original HTML-only proxy. Network speed, the target server, Cloudflare limits, and anti-bot systems still affect load time; no proxy can guarantee that every site opens instantly.
+Create a Google Auth Platform **Web application** client. Add:
+
+- Authorized JavaScript origin: `https://kadens-propxy.jamisonkaden7.workers.dev`
+- Authorized redirect URI: `https://kadens-propxy.jamisonkaden7.workers.dev/oauth/google/callback`
+
+The browser uses Google Identity Services in redirect mode. Its ID token is posted to the Worker, which checks Google's JWT signature, client ID, issuer, expiry, verified email flag, and double-submit CSRF token. Only the public client ID is needed in `wrangler.toml` as `GOOGLE_CLIENT_ID`; the client secret is not used. If Google's consent screen is in testing mode, add the two intended Google accounts as test users. Use a standard browser for Google sign-in; embedded browsers may be rejected by Google.
 
 ## Deploy or update
 
-Requires Node.js, Wrangler, a Cloudflare account, and a GitHub account. The deployed Worker names and D1 ID are in `wrangler.toml` and `wrangler.relay.toml`.
+Requires Node.js, Wrangler, the existing Cloudflare account, and the Google client ID.
 
-1. Publish the `docs/` folder from the repository's default branch with GitHub Pages.
-2. Run `wrangler login` and `wrangler d1 execute kadens-propxy-keys --remote --file=schema.sql`. The SQL uses `CREATE IF NOT EXISTS` and `INSERT OR IGNORE`, so it does not reset claimed keys.
-3. Deploy the relay with `wrangler deploy --config wrangler.relay.toml`.
-4. Generate a new random signing secret and save it with `wrangler secret put RELAY_SECRET --config wrangler.relay.toml`.
-5. Deploy the app with `wrangler deploy --config wrangler.toml`. Existing `GITHUB_CLIENT_SECRET` and `SESSION_SECRET` Worker secrets remain in place when updating it.
-6. For a fresh installation, create a GitHub OAuth app with callback `https://YOUR-APP-WORKER/oauth/callback`; put its public client ID in `wrangler.toml`, and save its client secret with `wrangler secret put GITHUB_CLIENT_SECRET`. Save a separate random `SESSION_SECRET` with `wrangler secret put SESSION_SECRET`.
-7. Set `SITE_URL`, `RELAY_URL`, and `APP_URL` to the actual deployed addresses before deploying.
+1. On the **existing** D1 database, run `wrangler d1 execute kadens-propxy-keys --remote --file=migration-google.sql` once. This adds the `google_sub` column and preserves existing key claims. Fresh databases do not need this migration.
+2. Run `wrangler d1 execute kadens-propxy-keys --remote --file=schema.sql` to ensure all tables and indexes exist. This does not reset claimed keys.
+3. Set `GOOGLE_CLIENT_ID` in `wrangler.toml`, then deploy the app with `wrangler deploy --config wrangler.toml`. Its existing `SESSION_SECRET` and GitHub migration credentials remain as Worker secrets.
+4. Set `GOOGLE_REQUIRED = "true"` in `wrangler.relay.toml`, then deploy the relay with `wrangler deploy --config wrangler.relay.toml`. This rejects older GitHub-only relay cookies.
+5. Publish the `docs/` folder through the existing GitHub Pages deployment.
 
-Run `node --test` to check key ownership, URL filtering, sign-in, single-use relay tickets, and the origin boundary. `node work/build-worker-bundle.mjs` from the parent workspace refreshes `dist/worker.js` for manual Quick Edit of the app Worker. The relay has its own Wrangler configuration and must be deployed separately.
+Run `node --test` to check account binding, legacy claim linking, address parsing, Google token verification, CSRF rejection, and one-use relay launch. `node work/build-worker-bundle.mjs` from the parent workspace refreshes `dist/worker.js` for manual Quick Edit.
+
+## Visual and browser behavior
+
+The loading screen lasts 3.4 seconds, spins the Star of David, and can be skipped with Enter, Escape, or Skip. The page and app use a full-window, centered black/white/grey design with small stars in the background. Reduced-motion users skip the animation.
+
+The relay rewrites links, scripts, and asset URLs and caches shared public content. This helps more sites than the original HTML-only proxy, but some sites, particularly video services, logins, CAPTCHAs, and heavily protected apps, can still fail. [Aetheris](https://github.com/mynamescrax/aetheris) uses Scramjet with libcurl/epoxy and states that it needs a VPS; its backend cannot run as a drop-in Cloudflare Worker or GitHub Pages site.
 
 ## Relay source and license
 
-`relay/upstream.js` comes from [whitedragon-software/relay](https://github.com/whitedragon-software/relay), source blob `2363654e9660e6b93e27a68ac0aaef02904a8c47`. Its GNU AGPL v3 license is included in `relay/LICENSE`. `relay/worker.js` adds Kaden's account gate and URL checks around that code. The relay source is public here as required by its license.
-
-The upstream relay itself notes that CAPTCHAs and target-site logins generally do not work, POST forms go directly to the target, target sites can block Cloudflare IPs, and WebSocket connections can time out. The proxy is meant for public pages and media, not authenticated sessions on third-party sites.
+`relay/upstream.js` comes from [whitedragon-software/relay](https://github.com/whitedragon-software/relay), source blob `2363654e9660e6b93e27a68ac0aaef02904a8c47`. Its GNU AGPL v3 license is included in `relay/LICENSE`. `relay/worker.js` adds account gating and URL checks around that code.
