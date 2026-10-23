@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Kadens propxy</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; color: #edf4ff; background: radial-gradient(circle at 20% 10%, #203c79, transparent 36%), radial-gradient(circle at 85% 85%, #123d5d, transparent 35%), #080e20; }
+    main { width: min(560px, calc(100% - 32px)); padding: 42px; border: 1px solid #375079; border-radius: 24px; background: #101a34e8; box-shadow: 0 28px 80px #0008; }
+    .mark { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 15px; background: #65e3d0; color: #08223b; font-weight: 900; font-size: 24px; }
+    h1 { font-size: clamp(2rem, 7vw, 3.5rem); letter-spacing: -.055em; line-height: 1.05; margin: 24px 0 12px; }
+    p { color: #b9c9e1; line-height: 1.6; }
+    a.button { display: block; text-align: center; text-decoration: none; margin-top: 26px; padding: 15px 20px; border-radius: 12px; background: #65e3d0; color: #09233a; font-weight: 800; }
+    a.button:hover { background: #89f3e3; }
+    small { display: block; color: #8fa4c6; margin-top: 20px; line-height: 1.5; }
+  </style>
+  <script src="config.js" defer></script>
+  <script defer>
+    addEventListener('DOMContentLoaded', () => {
+      const target = document.getElementById('open');
+      const origin = window.KADENS_WORKER_URL;
+      if (origin && !origin.includes('YOUR-SUBDOMAIN')) {
+        target.href = new URL('/app', origin).href;
+      } else {
+        target.textContent = 'Setup needed';
+        target.removeAttribute('href');
+      }
+    });
+  </script>
+</head>
+<body>
+  <main>
+    <div class="mark">K</div>
+    <h1>Kadens propxy</h1>
+    <p>Open a web page through your private browser. Sign in with GitHub, claim one of the two access keys, then paste a link.</p>
+    <a id="open" class="button" href="#">Open proxy</a>
+    <small>Each key belongs to the first GitHub account that claims it. Some websites do not work through a web proxy.</small>
+  </main>
+</body>
+</html>
+
