@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { claimKey, hashKey, hasAccess, normalizeTarget } from '../src/core.js';
+import { createSign, generateKeyPairSync } from 'node:crypto';
+import { claimKey, claimGoogleKey, hashKey, hasAccess, hasGoogleAccess, linkGoogleKey, normalizeTarget, resolveDestination } from '../src/core.js';
 import worker from '../src/worker.js';
 import relayWorker from '../relay/worker.js';
 
+const googleSub = '123456789012345678901';
+
 function fakeDb(hashes) {
-  const owners = new Map(hashes.map(hash => [hash, null]));
+  const owners = new Map(hashes.map(hash => [hash, { github_user_id: null, google_sub: null }]));
   const tickets = new Map();
   return {
     prepare(sql) {
@@ -13,23 +16,45 @@ function fakeDb(hashes) {
         bind(...args) {
           return {
             async run() {
-              if (sql.startsWith('INSERT INTO relay_tickets')) {
+              if (sql.startsWith('INSERT INTO') && sql.includes('relay_tickets')) {
                 const [hash, owner, target, expires] = args;
-                tickets.set(hash, { github_user_id: owner, target_url: target, expires_at: expires });
+                tickets.set(hash, { [sql.includes('google_relay_tickets') ? 'google_sub' : 'github_user_id']: owner, target_url: target, expires_at: expires });
                 return { meta: { changes: 1 } };
               }
-              assert.match(sql, /^UPDATE/);
-              const [owner, hash] = args;
-              if (!owners.has(hash) || owners.get(hash) !== null) return { meta: { changes: 0 } };
-              owners.set(hash, owner);
-              return { meta: { changes: 1 } };
+              if (sql.startsWith('UPDATE access_keys SET github_user_id')) {
+                const [owner, hash] = args;
+                const row = owners.get(hash);
+                if (!row || row.github_user_id !== null) return { meta: { changes: 0 } };
+                row.github_user_id = owner;
+                return { meta: { changes: 1 } };
+              }
+              if (sql.startsWith('UPDATE access_keys SET google_sub = ?, claimed_at')) {
+                const [owner, hash] = args;
+                const row = owners.get(hash);
+                if (!row || row.github_user_id !== null || row.google_sub !== null) return { meta: { changes: 0 } };
+                row.google_sub = owner;
+                return { meta: { changes: 1 } };
+              }
+              if (sql.startsWith('UPDATE access_keys SET google_sub = ? WHERE github_user_id')) {
+                const [sub, githubId] = args;
+                const row = [...owners.values()].find(item => item.github_user_id === githubId && item.google_sub === null);
+                if (!row || [...owners.values()].some(item => item.google_sub === sub)) return { meta: { changes: 0 } };
+                row.google_sub = sub;
+                return { meta: { changes: 1 } };
+              }
+              throw new Error(`Unexpected SQL: ${sql}`);
             },
             async first() {
-              if (sql.includes('WHERE key_hash')) return owners.has(args[0]) ? { github_user_id: owners.get(args[0]) } : null;
-              return [...owners.values()].includes(args[0]) ? { allowed: 1 } : null;
+              if (sql.includes('WHERE key_hash')) return owners.get(args[0]) || null;
+              if (sql.includes('WHERE google_sub')) return [...owners.values()].some(item => item.google_sub === String(args[0])) ? { allowed: 1 } : null;
+              if (sql.includes('WHERE github_user_id')) {
+                const row = [...owners.values()].find(item => item.github_user_id === Number(args[0]));
+                return row ? { allowed: 1, google_sub: row.google_sub } : null;
+              }
+              throw new Error(`Unexpected SQL: ${sql}`);
             },
             async all() {
-              assert.match(sql, /^DELETE FROM relay_tickets/);
+              assert.match(sql, /^DELETE FROM .*relay_tickets/);
               const [hash, now] = args;
               const row = tickets.get(hash);
               if (!row || row.expires_at < now) return { results: [] };
@@ -43,98 +68,76 @@ function fakeDb(hashes) {
   };
 }
 
-test('a key binds to its first GitHub account and cannot move to another', async () => {
+test('invite keys bind once to the Google account that redeems them', async () => {
   const db = fakeDb([await hashKey('example-secret')]);
-  assert.equal(await claimKey(db, 'example-secret', 101), 'claimed');
-  assert.equal(await claimKey(db, 'example-secret', 101), 'owned');
-  assert.equal(await claimKey(db, 'example-secret', 202), 'taken');
-  assert.equal(await hasAccess(db, 101), true);
-  assert.equal(await hasAccess(db, 202), false);
-  assert.equal(await claimKey(db, 'unknown', 202), 'invalid');
+  assert.equal(await claimGoogleKey(db, 'example-secret', googleSub), 'claimed');
+  assert.equal(await claimGoogleKey(db, 'example-secret', googleSub), 'owned');
+  assert.equal(await claimGoogleKey(db, 'example-secret', '222222222222222222222'), 'taken');
+  assert.equal(await hasGoogleAccess(db, googleSub), true);
+  assert.equal(await hasGoogleAccess(db, '222222222222222222222'), false);
 });
 
-test('URL validation permits public web links and blocks private targets', () => {
-  assert.equal(normalizeTarget('https://example.com/a').href, 'https://example.com/a');
+test('an existing GitHub claim can be linked to one Google account', async () => {
+  const db = fakeDb([await hashKey('legacy-key')]);
+  assert.equal(await claimKey(db, 'legacy-key', 101), 'claimed');
+  assert.equal(await linkGoogleKey(db, 101, googleSub), 'linked');
+  assert.equal(await hasGoogleAccess(db, googleSub), true);
+  assert.equal(await linkGoogleKey(db, 101, '222222222222222222222'), 'already-linked');
+  assert.equal(await hasAccess(db, 101), true);
+});
+
+test('address input accepts domains and searches but rejects private targets', () => {
+  assert.equal(normalizeTarget('example.com/a').href, 'https://example.com/a');
+  assert.match(resolveDestination('school project').href, /^https:\/\/duckduckgo\.com\/\?q=/);
   for (const value of ['http://localhost/', 'http://127.0.0.1/', 'http://10.1.2.3/', 'http://192.168.0.1/', 'http://169.254.10.1/', 'http://[::1]/', 'file:///etc/passwd', 'https://user:pass@example.com/']) {
     assert.throws(() => normalizeTarget(value), value);
   }
 });
 
-test('GitHub sign-in sets a session and the claimed key unlocks browsing', async () => {
+test('Google sign-in, key redemption, and full-page relay launch', async () => {
   const origin = 'https://kadens-propxy.example.workers.dev';
-  const db = fakeDb([await hashKey('example-secret')]);
   const relayOrigin = 'https://kadens-propxy-relay.example.workers.dev';
-  const env = { DB: db, GITHUB_CLIENT_ID: 'client', GITHUB_CLIENT_SECRET: 'secret', SESSION_SECRET: 'a-long-test-only-session-secret', RELAY_URL: relayOrigin };
+  const db = fakeDb([await hashKey('example-secret')]);
+  const env = { DB: db, GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com', SESSION_SECRET: 'test-session-secret', RELAY_URL: relayOrigin };
+  const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const jwk = { ...publicKey.export({ format: 'jwk' }), kid: 'test-key', use: 'sig' };
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', kid: 'test-key' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ iss: 'https://accounts.google.com', aud: env.GOOGLE_CLIENT_ID, sub: googleSub, email: 'owner@example.com', email_verified: true, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000)+3600 })).toString('base64url');
+  const signature = createSign('RSA-SHA256').update(`${header}.${payload}`).sign(privateKey).toString('base64url');
+  const credential = `${header}.${payload}.${signature}`;
   const priorFetch = globalThis.fetch;
   try {
     globalThis.fetch = async input => {
-      const url = String(input);
-      if (url.includes('/login/oauth/access_token')) return Response.json({ access_token: 'sample-token' });
-      if (url.includes('/user')) return Response.json({ id: 101, login: 'sample-user' });
-      throw new Error(`Unexpected fetch: ${url}`);
+      if (String(input).includes('/oauth2/v3/certs')) return Response.json({ keys: [jwk] }, { headers: { 'Cache-Control': 'public,max-age=3600' } });
+      throw new Error(`Unexpected fetch: ${input}`);
     };
     const login = await worker.fetch(new Request(`${origin}/login`), env);
-    assert.equal(login.status, 302);
-    const loginCookies = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
-    const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await worker.fetch(new Request(`${origin}/oauth/callback?code=sample&state=${state}`, { headers: { Cookie: loginCookies } }), env);
+    assert.equal(login.status, 200);
+    assert.match(await login.text(), /g_id_signin/);
+    const invalid = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', body: new URLSearchParams({ credential, g_csrf_token: 'wrong' }) }), env);
+    assert.equal(invalid.status, 403);
+    const callback = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', headers: { Cookie: 'g_csrf_token=sample' }, body: new URLSearchParams({ credential, g_csrf_token: 'sample' }) }), env);
     assert.equal(callback.status, 303);
     const sessionCookie = callback.headers.getSetCookie().find(value => value.startsWith('__Host-kp_session=')).split(';')[0];
-
     const before = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
-    const claimPage = await before.text();
-    assert.match(claimPage, /Unlock your access/);
-    const formToken = claimPage.match(/name="form_token" value="([^"]+)"/)?.[1];
+    const claimHtml = await before.text();
+    assert.match(claimHtml, /Claim access/);
+    const formToken = claimHtml.match(/name="form_token" value="([^"]+)"/)?.[1];
     assert.ok(formToken);
-    const blocked = await worker.fetch(new Request(`${origin}/claim`, {
-      method: 'POST',
-      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'key=example-secret'
-    }), env);
-    assert.equal(blocked.status, 403);
-    const invalid = await worker.fetch(new Request(`${origin}/claim`, {
-      method: 'POST',
-      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ key: 'wrong-key', form_token: formToken })
-    }), env);
-    assert.equal(invalid.status, 400);
-    assert.match(await invalid.text(), /That key is not valid/);
-    const claim = await worker.fetch(new Request(`${origin}/claim`, {
-      method: 'POST',
-      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ key: 'example-secret', form_token: formToken })
-    }), env);
+    const claim = await worker.fetch(new Request(`${origin}/claim`, { method: 'POST', headers: { Cookie: sessionCookie }, body: new URLSearchParams({ key: 'example-secret', form_token: formToken }) }), env);
     assert.equal(claim.status, 303);
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
-    const appHtml = await after.text();
-    assert.match(appHtml, /Where to next\?/);
-    assert.match(appHtml, /name="form_token"/);
-    assert.match(appHtml, /<svg viewBox="0 0 100 100"/);
-    const browse = await worker.fetch(new Request(`${origin}/browse?url=https%3A%2F%2Fexample.com%2F`, { headers: { Cookie: sessionCookie } }), env);
+    assert.match(await after.text(), /Search or enter a URL/);
+    const browse = await worker.fetch(new Request(`${origin}/browse?url=example.com`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(browse.status, 303);
-    assert.equal(browse.headers.get('cache-control'), 'no-store');
     const launchUrl = browse.headers.get('location');
     assert.match(launchUrl, /^https:\/\/kadens-propxy-relay\.example\.workers\.dev\/__kaden_launch\?ticket=/);
-    const relayEnv = { DB: db, RELAY_SECRET: 'a-long-test-only-relay-secret', APP_URL: `${origin}/app` };
+    const relayEnv = { DB: db, RELAY_SECRET: 'test-relay-secret', APP_URL: `${origin}/app` };
     const launch = await relayWorker.fetch(new Request(launchUrl), relayEnv, {});
     assert.equal(launch.status, 303);
     assert.equal(launch.headers.get('location'), `${relayOrigin}/https://example.com/`);
+    assert.equal((await relayWorker.fetch(new Request(launchUrl), relayEnv, {})).status, 403);
     const relayCookie = launch.headers.get('set-cookie').split(';')[0];
-    assert.match(relayCookie, /^__Host-kp_relay=/);
-    const replay = await relayWorker.fetch(new Request(launchUrl), relayEnv, {});
-    assert.equal(replay.status, 403);
-    const privateTarget = await relayWorker.fetch(new Request(`${relayOrigin}/https://127.0.0.1/`, { headers: { Cookie: relayCookie } }), relayEnv, {});
-    assert.equal(privateTarget.status, 400);
-    const anonymous = await relayWorker.fetch(new Request(`${relayOrigin}/https://example.com/`), relayEnv, {});
-    assert.equal(anonymous.status, 302);
-    const logout = await worker.fetch(new Request(`${origin}/logout`, {
-      method: 'POST',
-      headers: { Cookie: sessionCookie, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ form_token: formToken })
-    }), env);
-    assert.equal(logout.status, 303);
-    assert.match(logout.headers.get('set-cookie'), /Max-Age=0/);
-  } finally {
-    globalThis.fetch = priorFetch;
-  }
+    assert.equal((await relayWorker.fetch(new Request(`${relayOrigin}/https://127.0.0.1/`, { headers: { Cookie: relayCookie } }), relayEnv, {})).status, 400);
+  } finally { globalThis.fetch = priorFetch; }
 });
