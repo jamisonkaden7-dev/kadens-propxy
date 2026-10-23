@@ -9,9 +9,14 @@ A GitHub Pages launch page and a Cloudflare Worker web proxy. The [reference rep
 - Claiming a key updates its database row only if it has no owner. The same GitHub account can return later. A different account cannot claim or use that key.
 - All browsing and asset routes check for a signed session **and** a claimed key.
 
-GitHub Pages hosts the launch page at `https://YOUR-GITHUB-USERNAME.github.io/kadens-propxy/`. The browsing app runs at the Worker URL because [GitHub Pages cannot execute server-side code](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site). A static-only site cannot securely enforce one-time keys or fetch arbitrary pages on behalf of visitors.
+## Live deployment
 
-## Set up
+- Launch page: <https://jamisonkaden7-dev.github.io/kadens-propxy/>
+- Browsing app: <https://kadens-propxy.jamisonkaden7.workers.dev/app>
+
+GitHub Pages hosts the launch page. The browsing app runs at the Worker URL because [GitHub Pages cannot execute server-side code](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site). A static-only site cannot securely enforce one-time keys or fetch arbitrary pages on behalf of visitors.
+
+## Recreate the deployment
 
 You need a GitHub account, a Cloudflare account, and Node.js with npm.
 
@@ -20,7 +25,7 @@ You need a GitHub account, a Cloudflare account, and Node.js with npm.
 3. Run `npx wrangler d1 create kadens-propxy-keys`. Copy its `database_id` into `wrangler.toml`.
 4. Run `npx wrangler d1 execute kadens-propxy-keys --remote --file=schema.sql` to create and seed the two key rows. Run this **once before keys are claimed**. It uses `INSERT OR IGNORE`, so rerunning it will not reset claims.
 5. Run `npx wrangler deploy`. Note the `https://…workers.dev` URL.
-6. In GitHub **Settings → Developer settings → OAuth Apps**, create a new OAuth app. Use the Worker URL as the homepage and `https://YOUR-WORKER-URL/oauth/callback` as its authorization callback. This app only reads the signed-in account's public identity; it does not request repository scopes.
+6. In GitHub **Settings → Developer settings → OAuth Apps**, create a new OAuth app. Use the Pages URL as the homepage and `https://YOUR-WORKER-URL/oauth/callback` as its authorization callback. This app only reads the signed-in account's public identity; it does not request repository scopes.
 7. Save the OAuth client ID and client secret to the Worker with `npx wrangler secret put GITHUB_CLIENT_ID` and `npx wrangler secret put GITHUB_CLIENT_SECRET`.
 8. Generate a random session signing secret with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, then save it with `npx wrangler secret put SESSION_SECRET`.
 9. Replace the Worker URL in `docs/config.js`. Replace `SITE_URL` in `wrangler.toml` with the exact Pages URL. Commit and push those edits, then run `npx wrangler deploy` again.
