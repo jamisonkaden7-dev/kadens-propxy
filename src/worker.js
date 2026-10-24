@@ -1,5 +1,6 @@
 import { claimKey, claimGoogleKeyHash, hashKey, keyExists, hasAccess, hasGoogleKeyAccess, linkGoogleKey, normalizeTarget, resolveDestination } from './core.js';
 import { css as modernCss, bootCss, bootHtml, bootJs } from './ui.js';
+import { featureJs } from './features.js';
 
 const SESSION_AGE = 7 * 24 * 60 * 60;
 const HTML_LIMIT = 2 * 1024 * 1024;
@@ -16,7 +17,11 @@ export default {
       const origin = url.origin;
       const path = url.pathname;
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
-      if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + "\n" + "document.querySelectorAll('form.search:not(.key-search)').forEach(form=>form.addEventListener('submit',()=>{const button=form.querySelector('button[type=submit]');if(!button)return;const original=button.textContent;button.textContent='Opening…';setTimeout(()=>{button.textContent=original},8000)}));", { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
+      if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + '\n' + featureJs, { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff' } });
+      if (path === '/music-api' && request.method === 'GET') return musicApi(url);
+      if (path === '/music' && request.method === 'GET') return musicPage();
+      if (path === '/settings' && request.method === 'GET') return settingsPage();
+      if (path === '/minecraft' && request.method === 'GET') return minecraftPage();
       if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? keyPage() : startLogin(env, origin);
       if (path === '/access' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) {
         const form = await request.formData();
@@ -385,7 +390,7 @@ function proxyHeaders(type) {
     'Cache-Control': 'private, no-store',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
-    'Content-Security-Policy': "default-src 'none'; img-src 'self' data: https://jamisonkaden7-dev.github.io; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self'; form-action 'self'; base-uri 'none'; script-src 'none'; frame-src 'none'"
+    'Content-Security-Policy': "default-src 'none'; img-src 'self' data: https://jamisonkaden7-dev.github.io https://is1-ssl.mzstatic.com https://is2-ssl.mzstatic.com https://is3-ssl.mzstatic.com https://is4-ssl.mzstatic.com https://is5-ssl.mzstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob: https://audio-ssl.itunes.apple.com https://*.itunes.apple.com; form-action 'self'; base-uri 'none'; script-src 'none'; frame-src blob:"
   };
 }
 
@@ -401,7 +406,7 @@ async function proxyPage(raw, origin) {
   const source = new Response(body, { status: response.status, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   const rewriter = new HTMLRewriter()
     .on('body', { element(e) {
-      e.prepend(`<div style="position:sticky;top:0;z-index:2147483647;padding:10px 16px;background:#111;color:#fff;font:14px system-ui;border-bottom:1px solid #555"><a style="color:#eee;text-decoration:none;font-weight:700" href="${origin}/app">← isRecool</a> <span style="margin-left:12px;opacity:.75">${escapeHtml(finalUrl.hostname)}</span></div>`, { html: true });
+      e.prepend(`<div style="position:sticky;top:0;z-index:2147483647;padding:10px 16px;background:#111;color:#fff;font:14px system-ui;border-bottom:1px solid #555"><a style="color:#eee;text-decoration:none;font-weight:700" href="${origin}/app">← ItsRecoil</a> <span style="margin-left:12px;opacity:.75">${escapeHtml(finalUrl.hostname)}</span></div>`, { html: true });
     } })
     .on('script,iframe,object,embed,base', { element(e) { e.remove(); } })
     .on('meta[http-equiv]', { element(e) { e.remove(); } })
@@ -471,21 +476,24 @@ const css = `
 `;
 
 function page(title, content, status = 200, googleScript = false, localScript = false, showBoot = false) {
-  const active = title === 'Browse' ? 'browse' : title === 'Enter key' || title === 'Claim a key' ? 'key' : title === 'Privacy' ? 'privacy' : title === 'Account' || title === 'Sign in' || title === 'Link Google' ? 'account' : '';
+  const active = title === 'Browse' ? 'browse' : title === 'Enter key' || title === 'Claim a key' ? 'key' : title === 'Privacy' ? 'privacy' : title === 'Account' || title === 'Sign in' || title === 'Link Google' ? 'account' : title.toLowerCase();
   const heading = title === 'Enter key' || title === 'Claim a key' ? 'Access' : title === 'Sign in' || title === 'Link Google' ? 'Account' : title;
   const nav = (name, href, label, icon) => `<a class="nav-link${active === name ? ' is-active' : ''}" href="${href}"${active === name ? ' aria-current="page"' : ''}><span class="nav-icon" aria-hidden="true">${icon}</span><span class="nav-label">${label}</span></a>`;
   const browseIcon = '<svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M9 20v-6h6v6"/></svg>';
   const keyIcon = '<svg viewBox="0 0 24 24"><circle cx="8" cy="10" r="3.5"/><path d="M11.5 10H21v3h-3v3h-3v-3h-3.5"/></svg>';
   const accountIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.5-5.5 7-5.5s6 2 7 5.5"/></svg>';
   const privacyIcon = '<svg viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.3 8-8 9-4.7-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>';
-  const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="brand-mark" aria-hidden="true">i<span class="brand-status"></span></span><span class="brand-copy"><strong>isRecool</strong><small>Private browser</small></span></a><div class="side-group"><span class="side-label">WORKSPACE</span><nav class="side-nav">${nav('browse', '/app', 'Browse', browseIcon)}${nav('key', '/login', 'Access key', keyIcon)}${nav('account', '/account', 'Account', accountIcon)}</nav></div><div class="side-bottom"><div class="side-card"><span class="side-card-tag">ACCESS</span><strong>Invite-only browsing</strong><p>Enter a key, then use the Google account connected to it.</p></div>${nav('privacy', '/privacy', 'Privacy', privacyIcon)}</div></aside><div class="workspace"><header class="top"><span class="top-title">${escapeHtml(heading)}</span><a class="top-action" href="/privacy"><span class="status-dot" aria-hidden="true"></span>Private browsing</a></header><main class="view view-${active || 'other'}">${content}</main></div></div>`;
+  const musicIcon = '<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+  const gameIcon = '<svg viewBox="0 0 24 24"><path d="M5 8h14l3 9-3 3-4-3H9l-4 3-3-3z"/><path d="M7 13h5m-2.5-2.5v5M17 13h.01M19 15h.01"/></svg>';
+  const settingsIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9 7 7m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>';
+  const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="brand-mark" aria-hidden="true">R<span class="brand-status"></span></span><span class="brand-copy"><strong>ItsRecoil</strong><small>Private workspace</small></span></a><div class="side-group"><span class="side-label">WORKSPACE</span><nav class="side-nav">${nav('browse', '/app', 'Browse', browseIcon)}${nav('music', '/music', 'Music', musicIcon)}${nav('minecraft', '/minecraft', 'Minecraft', gameIcon)}${nav('key', '/login', 'Access key', keyIcon)}${nav('account', '/account', 'Account', accountIcon)}</nav></div><div class="side-bottom"><div class="side-card"><span class="side-card-tag">ACCESS</span><strong>Invite-only browsing</strong><p>Enter a key, then use the Google account connected to it.</p></div>${nav('settings', '/settings', 'Settings', settingsIcon)}${nav('privacy', '/privacy', 'Privacy', privacyIcon)}</div></aside><div class="workspace"><header class="top"><span class="top-title">${escapeHtml(heading)}</span><a class="top-action" href="/settings"><span class="status-dot" aria-hidden="true"></span><span id="connection-state">Online</span></a></header><main class="view view-${active || 'other'}">${content}</main></div></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
-  if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
+  headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
-    headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://jamisonkaden7-dev.github.io https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
+    headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://jamisonkaden7-dev.github.io https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   }
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · isRecool</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}${localScript ? '<script src="/ui.js?v=boot4" defer></script>' : ''}</head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · ItsRecoil</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}<script src="/ui.js?v=features1" defer></script></head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
 }
 
 function googleWidget(env, origin) {
@@ -493,11 +501,11 @@ function googleWidget(env, origin) {
 }
 
 function googleLoginPage(env, origin) {
-  return page('Sign in', `<section class="center"><div class="overline">isRecool / 02 — account</div><h1>Your account.</h1><p class="subhead">Sign in with the Google account that owns this key. If this key is new, the account you choose will claim it.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login">Use a different key</a></div></section>`, 200, true);
+  return page('Sign in', `<section class="center"><div class="overline">ItsRecoil / 02 — account</div><h1>Your account.</h1><p class="subhead">Sign in with the Google account that owns this key. If this key is new, the account you choose will claim it.</p>${googleWidget(env, origin)}<div class="actions"><a class="chip" href="/login">Use a different key</a></div></section>`, 200, true);
 }
 
 function keyPage(error = '', status = 200) {
-  return page('Enter key', `<section class="center key-screen"><div class="key-main"><span class="section-kicker">GET STARTED</span><div class="key-intro"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p></div>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search key-search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><button class="go" type="submit" aria-label="Continue">→</button></form><p class="helper key-helper">First Google sign-in claims a new key.</p></div><aside class="access-panel"><span class="section-kicker">HOW IT WORKS</span><h2>Access in two steps</h2><div class="access-step"><span>01</span><div><strong>Enter your key</strong><p>Use the invite key you were given.</p></div></div><div class="access-step"><span>02</span><div><strong>Sign in with Google</strong><p>New keys become tied to that account.</p></div></div></aside></section>`, status, false, true, true);
+  return page('Enter key', `<section class="center key-screen"><div class="key-main"><span class="section-kicker">GET STARTED</span><div class="key-intro"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p></div>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search key-search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><button class="go" type="submit" aria-label="Continue">→</button></form><p class="helper key-helper">First Google sign-in claims a new key.</p></div><aside class="access-panel"><span class="section-kicker">HOW IT WORKS</span><h2>Access in two steps</h2><div class="access-step"><span>01</span><div><strong>Enter your key</strong><p>Use the invite key you were given.</p></div></div><div class="access-step"><span>02</span><div><strong>Sign in with Google</strong><p>New keys become tied to that account.</p></div></div></aside></section>`, status, false, true);
 }
 
 function accountPage(user, formToken) {
@@ -505,18 +513,49 @@ function accountPage(user, formToken) {
 }
 
 function privacyPage() {
-  return page('Privacy', `<section class="center"><div class="overline">isRecool / Privacy</div><h1 class="error-title">Privacy.</h1><p class="subhead">isRecool uses your Google account ID to keep your redeemed key tied to your account. It stores a hash of the key and that account ID in Cloudflare D1. Your email appears only in a signed browser session cookie and on the account screen.</p><p class="subhead">When you open a link, the service handles the address and page data to relay that public website. It uses short-lived launch tickets and session cookies. The websites you visit may collect information under their own policies. Cloudflare provides hosting and may process request data. isRecool does not sell your account information.</p><p class="subhead">For questions about your data, contact <a href="mailto:jamisonkaden7@gmail.com">jamisonkaden7@gmail.com</a>.</p><div class="actions"><a class="chip" href="/app">← Back to isRecool</a></div></section>`, 200);
+  return page('Privacy', `<section class="center"><div class="overline">ItsRecoil / Privacy</div><h1 class="error-title">Privacy.</h1><p class="subhead">ItsRecoil uses your Google account ID to keep your redeemed key tied to your account. It stores a hash of the key and that account ID in Cloudflare D1. Your email appears only in a signed browser session cookie and on the account screen.</p><p class="subhead">When you open a link, the service handles the address and page data to relay that public website. It uses short-lived launch tickets and session cookies. The websites you visit may collect information under their own policies. Cloudflare provides hosting and may process request data. ItsRecoil does not sell your account information.</p><div class="actions"><a class="chip" href="/app">← Back to ItsRecoil</a></div></section>`, 200);
+}
+
+function settingsPage() {
+  return page('Settings', `<section class="feature-page"><div class="feature-head"><span class="section-kicker">PREFERENCES</span><h1>Settings</h1><p>Make this workspace yours. Preferences stay in this browser.</p></div><div class="settings-grid"><section class="feature-card"><h2>Appearance</h2><label class="setting-row" for="setting-theme"><span><strong>Theme</strong><small>Choose the workspace colors.</small></span><select id="setting-theme"><option value="dark">Dark</option><option value="light">Light</option></select></label><label class="setting-row" for="setting-cursor"><span><strong>Custom cursor</strong><small>A small arrow that follows the theme.</small></span><input id="setting-cursor" type="checkbox"></label></section><section class="feature-card"><h2>Browser tab</h2><label class="setting-row" for="setting-cloak"><span><strong>Tab appearance</strong><small>Changes this tab's title and icon.</small></span><select id="setting-cloak"><option value="recoil">ItsRecoil</option><option value="canva">Canva</option><option value="canvas">Canvas</option><option value="docs">Google Docs</option></select></label></section><section class="feature-card"><h2>Connection</h2><div class="setting-row"><span><strong>Current status</strong><small>Based on this browser's network state.</small></span><span class="connection-readout" id="connection-readout">Online</span></div><label class="setting-row" for="setting-testing"><span><strong>Testing indicator</strong><small>Marks your session as testing.</small></span><input id="setting-testing" type="checkbox"></label></section></div></section>`);
+}
+
+function musicPage() {
+  return page('Music', `<section class="feature-page music-page"><div class="feature-head"><span class="section-kicker">MUSIC</span><h1>Find something to listen to.</h1><p>Search the iTunes catalog and play available previews. Open a track to listen in Apple Music.</p></div><form id="music-search" class="music-search"><input name="q" aria-label="Search songs and artists" placeholder="Search songs or artists" required><button type="submit">Search <span aria-hidden="true">→</span></button></form><div class="music-categories"><span>Try</span><button type="button" data-music-query="indie">Indie</button><button type="button" data-music-query="hip hop">Hip hop</button><button type="button" data-music-query="jazz">Jazz</button><button type="button" data-music-query="electronic">Electronic</button></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Tracks</h2><span>Provided courtesy of iTunes</span></div><div id="music-results"><p class="music-empty">Search to see tracks.</p></div></section><aside class="feature-card music-player"><span class="section-kicker">NOW PLAYING</span><img id="music-art" alt="" hidden><h2 id="music-now">Choose a song</h2><p>Previews play here when available.</p><audio id="music-audio" controls preload="none"></audio><div class="player-actions"><button type="button" id="music-prev" aria-label="Previous song">← Previous</button><button type="button" id="music-next" aria-label="Next song">Next →</button></div></aside></div></section>`);
+}
+
+async function musicApi(url) {
+  const query = String(url.searchParams.get('q') || '').trim().slice(0, 100);
+  if (!query) return new Response(JSON.stringify({ resultCount: 0, results: [] }), { headers: { 'Content-Type': 'application/json' } });
+  try {
+    const source = new URL('https://itunes.apple.com/search');
+    source.searchParams.set('term', query);
+    source.searchParams.set('entity', 'song');
+    source.searchParams.set('limit', '35');
+    const upstream = await fetch(source, { headers: { Accept: 'application/json' } });
+    if (!upstream.ok) throw new Error('Music API unavailable');
+    const data = await upstream.json();
+    return new Response(JSON.stringify({ resultCount: data.resultCount, results: data.results }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' } });
+  } catch {
+    return new Response(JSON.stringify({ error: 'Music search is unavailable' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+  }
+}
+
+function minecraftPage() {
+  const response = page('Minecraft', `<section class="feature-page game-page"><div class="feature-head"><span class="section-kicker">MINECRAFT</span><h1>Eaglercraft launcher</h1><p>Load the Eaglercraft HTML file you provided. The game runs locally in your browser; the site does not upload the file.</p></div><section class="feature-card game-launcher"><div><h2>Launch Minecraft</h2><p id="minecraft-message">Select the supplied Eaglercraft HTML file.</p><div class="game-controls"><label class="file-button" for="minecraft-file">Choose HTML file</label><input id="minecraft-file" type="file" accept=".html,text/html"><button id="minecraft-launch" type="button" disabled>Launch game →</button><button id="minecraft-fullscreen" type="button">Fullscreen</button></div></div></section><iframe id="minecraft-frame" title="Eaglercraft" allow="fullscreen; gamepad; clipboard-read; clipboard-write" hidden></iframe></section>`);
+  response.headers.set('Content-Security-Policy', "default-src 'self' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https:; style-src 'self' 'unsafe-inline' blob: data: https:; img-src 'self' blob: data: https:; media-src 'self' blob: data: https:; connect-src 'self' blob: data: https: wss:; frame-src blob:; worker-src blob:; form-action 'self'; base-uri 'none'");
+  return response;
 }
 
 async function linkPage(user, env, formToken, origin) {
-  const response = page('Link Google', `<section class="center"><div class="overline">isRecool / account</div><h1>Link Google.</h1><p class="subhead">The key claimed by <strong>${escapeHtml(user.login)}</strong> will be linked to the Google account you choose.</p>${googleWidget(env, origin)}<div class="identity">${logoutForm(formToken)}</div></section>`, 200, true);
+  const response = page('Link Google', `<section class="center"><div class="overline">ItsRecoil / account</div><h1>Link Google.</h1><p class="subhead">The key claimed by <strong>${escapeHtml(user.login)}</strong> will be linked to the Google account you choose.</p>${googleWidget(env, origin)}<div class="identity">${logoutForm(formToken)}</div></section>`, 200, true);
   response.headers.append('Set-Cookie', cookie('__Host-kp_link', '1', 600, 'None'));
   response.headers.append('Set-Cookie', cookie('__Host-kp_session', await makeSession(user, env.SESSION_SECRET), SESSION_AGE, 'None'));
   return response;
 }
 
 function errorPage(message, status) {
-  return page('Could not open page', `<section class="center"><div class="overline">isRecool / error</div><h1 class="error-title">Couldn’t open it.</h1><p class="reason">${escapeHtml(message)}</p><div class="actions"><a class="chip" href="/app">Back to isRecool ↗</a></div></section>`, status);
+  return page('Could not open page', `<section class="center"><div class="overline">ItsRecoil / error</div><h1 class="error-title">Couldn’t open it.</h1><p class="reason">${escapeHtml(message)}</p><div class="actions"><a class="chip" href="/app">Back to ItsRecoil ↗</a></div></section>`, status);
 }
 
 function logoutForm(formToken) {
@@ -524,11 +563,11 @@ function logoutForm(formToken) {
 }
 
 function claimPage(user, formToken, error = '', status = 200) {
-  return page('Claim a key', `<section class="center"><div class="overline">isRecool / access</div><h1>Redeem key.</h1><p class="subhead">A key can be used once and stays with this Google account.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/claim" method="post"><input type="hidden" name="form_token" value="${formToken}"><label class="overline" for="key">Invite key</label><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus><button class="key-submit" type="submit">Redeem ↗</button></form><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, status);
+  return page('Claim a key', `<section class="center"><div class="overline">ItsRecoil / access</div><h1>Redeem key.</h1><p class="subhead">A key can be used once and stays with this Google account.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/claim" method="post"><input type="hidden" name="form_token" value="${formToken}"><label class="overline" for="key">Invite key</label><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus><button class="key-submit" type="submit">Redeem ↗</button></form><div class="identity">Signed in as <strong>${escapeHtml(user.login)}</strong></div><div class="actions">${logoutForm(formToken)}</div></section>`, status);
 }
 
 function appPage(user, env, formToken, pending = '') {
-  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><div class="composer-bar"><span class="composer-label">Website or search</span><button class="go" type="submit" aria-label="Open">↑</button></div></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true, true);
+  const response = page('Browse', `<section class="center key-screen browse-screen"><div class="key-main"><span class="section-kicker">BROWSE THE WEB</span><div class="key-intro"><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p></div><form class="search key-search browse-search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit" aria-label="Open">→</button></form><p class="helper browse-helper">Sites open through ItsRecoil when supported.</p></div><aside class="access-panel session-panel"><span class="section-kicker">YOUR SESSION</span><h2>Signed in</h2><p class="session-user">${escapeHtml(user.login)}</p><div class="session-actions"><a href="/account">Manage account <span aria-hidden="true">→</span></a><a href="/privacy">Privacy <span aria-hidden="true">→</span></a>${logoutForm(formToken)}</div></aside></section>`, 200, false, true);
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
@@ -539,5 +578,6 @@ function appPage(user, env, formToken, pending = '') {
 
 function googleChoicePage(target) {
   const query = target.searchParams.get('q') || '';
-  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><div class="composer-bar"><span class="composer-label">Web search</span><button class="go" type="submit" aria-label="Search">↑</button></div></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
+  return page('Search', `<section class="center"><div class="overline">ItsRecoil / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside ItsRecoil. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><div class="composer-bar"><span class="composer-label">Web search</span><button class="go" type="submit" aria-label="Search">↑</button></div></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
 }
+
