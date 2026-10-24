@@ -163,7 +163,7 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter an address/);
-    assert.match(appHtml, /src="\/ui\.js\?v=boot2"/);
+    assert.match(appHtml, /src="\/ui\.js\?v=boot3"/);
     assert.match(after.headers.get('Content-Security-Policy'), /form-action https:/);
     assert.match(after.headers.get('Content-Security-Policy'), /connect-src https:\/\/kadens-propxy-relay\.example\.workers\.dev/);
     assert.equal(after.headers.get('Link'), '<https://kadens-propxy-relay.example.workers.dev>; rel=preconnect');
