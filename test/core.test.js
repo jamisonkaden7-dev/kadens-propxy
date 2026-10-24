@@ -134,6 +134,25 @@ test('music search returns playable Deezer previews and permits the page request
   } finally { globalThis.fetch = priorFetch; }
 });
 
+test('Deezer albums include every paginated track, including tracks without previews', async () => {
+  const priorFetch = globalThis.fetch;
+  const env = { DB: fakeDb([]), GOOGLE_CLIENT_ID: 'test-client', SESSION_SECRET: 'test-secret' };
+  try {
+    globalThis.fetch = async input => {
+      const url = new URL(input);
+      assert.equal(url.origin, 'https://api.deezer.com');
+      if (!url.searchParams.has('index')) return Response.json({ title: 'Album', cover_medium: 'https://example.com/a.jpg', artist: { name: 'Artist' }, tracks: { data: [{ id: 1, title: 'First', preview: '' }], next: 'https://api.deezer.com/album/123/tracks?index=1' } });
+      return Response.json({ data: [{ id: 2, title: 'Second', preview: 'https://example.com/preview.mp3' }] });
+    };
+    const response = await worker.fetch(new Request('https://app.example/music-album-api?source=deezer&id=123'), env);
+    assert.equal(response.status, 200);
+    const album = await response.json();
+    assert.equal(album.trackCount, 2);
+    assert.equal(album.results[0].previewUrl, '');
+    assert.equal(album.results[1].trackName, 'Second');
+  } finally { globalThis.fetch = priorFetch; }
+});
+
 test('Audius search and album return full tracks, and Minecraft launches without a file picker', async () => {
   const priorFetch = globalThis.fetch;
   const env = { DB: fakeDb([]), GOOGLE_CLIENT_ID: 'test-client', SESSION_SECRET: 'test-secret' };
