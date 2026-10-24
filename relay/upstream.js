@@ -72,7 +72,7 @@ self.addEventListener('fetch', (event) => {
 
   // Already correctly path-embedded, or the SW script/root usage page — leave alone.
   if (/^\\/https?:\\/\\//.test(url.pathname)) return;
-  if (url.pathname === '${SW_PATH}') return;
+  if (url.pathname === '${SW_PATH}' || url.pathname === '/__kaden_home' || url.pathname === '/__kaden_exit') return;
   if (url.pathname === '/' && !url.search) return;
 
   // A request landed at our bare origin with no embedded target — recover
@@ -1577,7 +1577,7 @@ function resolveAndProxy(value, baseUrl, proxyOrigin) {
   // An empty src/href must not resolve to the page itself (<img src=""> would
   // otherwise request the page's own HTML as an image).
   if (!value.trim()) return null;
-  if (/^(javascript|data|mailto|tel|#)/i.test(value)) return null;
+  if (/^(javascript|data|blob|mailto|tel|chrome-extension|moz-extension|edge-extension|#)/i.test(value)) return null;
   try {
     const target = decodeTrackingRedirect(value, baseUrl) || value;
     const abs = new URL(target, baseUrl).href;
@@ -1799,7 +1799,7 @@ class ScriptInjector {
       function toProxied(raw) {
         try {
           if (typeof raw !== 'string' || !raw) return raw;
-          if (/^(data|blob|javascript):/i.test(raw)) return raw;
+          if (/^(data|blob|javascript|chrome-extension|moz-extension|edge-extension|about):/i.test(raw)) return raw;
           // A root-relative path that is ALREADY a proxy path: page JS read
           // location.pathname (which is "/https://real.site/page" under this
           // scheme) and fed it back into history/URL APIs. Never re-resolve
@@ -1954,17 +1954,17 @@ class ScriptInjector {
         var home = document.createElement('a');
         home.id = '__relay_home';
         relayNativeSetAttr.call(home, 'href', proxyOrigin + '/__kaden_home');
-        home.setAttribute('aria-label', 'Home — isRecool');
+        home.setAttribute('aria-label', 'Home — ItsRecoil');
         home.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;' +
-          'display:inline-flex;align-items:center;gap:6px;min-height:27px;padding:4px 9px;' +
-          'background:linear-gradient(145deg,#ffffff48,#ffffff1c),#6668;border:1px solid #ffffff9c;border-radius:12px;' +
-          'color:#ececec;font:500 11px/1 Arial,Helvetica,sans-serif;text-decoration:none;' +
-          'box-shadow:inset 0 1px #ffffff9c,0 6px 20px #0005;backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);cursor:pointer;touch-action:manipulation;';
+          'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:7px 11px;' +
+          'background:#171717;border:1px solid #383838;border-radius:9px;' +
+          'color:#eee;font:500 12px/1 Arial,Helvetica,sans-serif;text-decoration:none;' +
+          'box-shadow:0 8px 22px #0009;cursor:pointer;touch-action:manipulation;';
         home.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
           'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
           '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span>';
         (document.body || document.documentElement).appendChild(home);
-        home.addEventListener('click', function(e) { e.stopPropagation(); });
+        home.addEventListener('click', function(e) { e.preventDefault(); e.stopImmediatePropagation(); window.location.assign(proxyOrigin + '/__kaden_home'); }, true);
       }
 
       function relayEnsurePanel() {
@@ -1973,19 +1973,19 @@ class ScriptInjector {
         var toggle = document.createElement('button');
         toggle.id = '__relay_debug_toggle';
         toggle.type = 'button';
-        toggle.style.cssText = 'position:fixed;top:10px;right:97px;z-index:2147483647;' +
-          'background:linear-gradient(145deg,#ffffff48,#ffffff1c),#6668;border:1px solid #ffffff9c;border-radius:12px;padding:6px 9px;' +
-          'color:#ececec;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:.02em;' +
-          'cursor:pointer;box-shadow:inset 0 1px #ffffff9c,0 6px 20px #0005;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);line-height:1;' +
+        toggle.style.cssText = 'position:fixed;top:10px;right:98px;z-index:2147483647;' +
+          'background:#171717;border:1px solid #383838;border-radius:9px;padding:11px 10px;' +
+          'color:#bbb;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.02em;' +
+          'cursor:pointer;box-shadow:0 8px 22px #0009;line-height:1;' +
           'touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
         toggle.textContent = 'relay';
 
         var panel = document.createElement('div');
         panel.id = '__relay_debug_panel';
-        panel.style.cssText = 'position:fixed;top:42px;right:10px;z-index:2147483647;' +
-          'background:linear-gradient(145deg,#ffffff42,#ffffff14),#383838c9;border:1px solid #ffffff8a;border-radius:16px;width:340px;' +
+        panel.style.cssText = 'position:fixed;top:52px;right:10px;z-index:2147483647;' +
+          'background:#121212;border:1px solid #383838;border-radius:12px;width:340px;' +
           'max-width:calc(100vw - 20px);max-height:60vh;overflow:auto;display:none;' +
-          'box-shadow:inset 0 1px #ffffff7a,0 18px 46px #0008;backdrop-filter:blur(26px) saturate(140%);-webkit-backdrop-filter:blur(26px) saturate(140%);' +
+          'box-shadow:0 18px 46px #000a;' +
           'font-family:ui-monospace,monospace;font-size:11px;';
         panel.innerHTML =
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;' +
@@ -2429,7 +2429,7 @@ class ScriptInjector {
           // never match and this would re-rewrite the same element forever,
           // each write retriggering the observer that called us.
           var raw = relayNativeGetAttr.call(el, attr);
-          if (!raw || raw.charAt(0) === '#' || /^(javascript|data|blob|mailto|tel):/i.test(raw)) return;
+          if (!raw || raw.charAt(0) === '#' || /^(javascript|data|blob|mailto|tel|chrome-extension|moz-extension|edge-extension|about):/i.test(raw)) return;
           // Already correctly proxied — no-op. Also what stops this from
           // re-triggering itself forever: writing the rewritten value
           // below is itself an attribute mutation the observer sees, and
@@ -2577,7 +2577,17 @@ class ScriptInjector {
         // make this hijack every click instead of letting correct links
         // navigate natively.
         var raw = relayNativeGetAttr.call(link, 'href');
-        if (!raw || raw.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(raw)) return;
+        if (!raw || raw.charAt(0) === '#' || /^(javascript|mailto|tel|chrome-extension|moz-extension|edge-extension|about):/i.test(raw)) return;
+        try {
+          var watchTarget = raw.indexOf(proxyOrigin + '/') === 0 ? raw.slice(proxyOrigin.length + 1) : new URL(raw, realBase()).href;
+          var watchUrl = new URL(watchTarget);
+          if ((watchUrl.hostname === 'www.youtube.com' || watchUrl.hostname === 'youtube.com') && watchUrl.pathname === '/watch' && watchUrl.searchParams.has('v')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.location.assign(proxyOrigin + '/' + watchUrl.href);
+            return;
+          }
+        } catch (err) {}
         // Already correctly proxied (the common case — any link server-side
         // rewriting already handled) — do nothing and let native browser
         // behavior take it from here. Intercepting anyway needlessly blocks
@@ -2655,3 +2665,4 @@ class ScriptInjector {
     );
   }
 }
+
