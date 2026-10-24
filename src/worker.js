@@ -598,7 +598,22 @@ async function musicAlbumApi(url) {
     const raw = await upstream.json();
     const album = sourceName === 'audius' ? (Array.isArray(raw.data) ? raw.data[0] : raw.data) : raw;
     if (!album || !Array.isArray(sourceName === 'audius' ? album.tracks : album.tracks?.data)) throw new Error('Invalid album');
-    const results = sourceName === 'audius' ? album.tracks.map(track => audiusTrack(track, album.playlist_name)) : album.tracks.data.map(track => deezerTrack({ ...track, album: { id, title: album.title, cover_medium: album.cover_medium } }, album.title, id));
+    let tracks = sourceName === 'audius' ? album.tracks : album.tracks.data;
+    if (sourceName === 'deezer') {
+      let next = album.tracks.next;
+      for (let page = 0; next && page < 20; page++) {
+        const moreUrl = new URL(next);
+        if (moreUrl.origin !== 'https://api.deezer.com' || moreUrl.pathname !== `/album/${id}/tracks`) throw new Error('Invalid album pagination');
+        const more = await fetch(moreUrl, { headers: { Accept: 'application/json' } });
+        if (!more.ok) throw new Error('Album pagination unavailable');
+        const result = await more.json();
+        if (!Array.isArray(result.data)) throw new Error('Invalid album pagination');
+        tracks = tracks.concat(result.data);
+        next = result.next;
+      }
+      if (next) throw new Error('Album too large');
+    }
+    const results = sourceName === 'audius' ? tracks.map(track => audiusTrack(track, album.playlist_name)) : tracks.map(track => deezerTrack({ ...track, album: { id, title: album.title, cover_medium: album.cover_medium } }, album.title, id));
     return musicJson({ title: sourceName === 'audius' ? album.playlist_name : album.title, artist: sourceName === 'audius' ? album.user?.name : album.artist?.name, artwork: sourceName === 'audius' ? album.artwork?.['480x480'] : album.cover_medium, trackCount: results.length, source: sourceName, link: sourceName === 'audius' ? (album.permalink ? `https://audius.co${album.permalink}` : '') : album.link, results });
   } catch { return musicJson({ error: 'Album unavailable' }, 502); }
 }
