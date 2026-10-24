@@ -19,9 +19,13 @@ export default {
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
       if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + '\n' + featureJs, { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
       if (path === '/music-api' && request.method === 'GET') return musicApi(url);
+      if (path === '/music-album-api' && request.method === 'GET') return musicAlbumApi(url);
+      if (path === '/music-stream' && request.method === 'GET') return musicStream(request, url);
       if (path === '/music' && request.method === 'GET') return musicPage();
+      if (/^\/music\/album\/(audius|deezer)\/[A-Za-z0-9_-]+$/.test(path) && request.method === 'GET') return musicAlbumPage(path);
       if (path === '/settings' && request.method === 'GET') return settingsPage();
       if (path === '/minecraft' && request.method === 'GET') return minecraftPage();
+      if (path === '/minecraft-client' && request.method === 'GET') return minecraftClient();
       if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? keyPage() : startLogin(env, origin);
       if (path === '/access' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) {
         const form = await request.formData();
@@ -476,7 +480,7 @@ const css = `
 `;
 
 function page(title, content, status = 200, googleScript = false, localScript = false, showBoot = false) {
-  const active = title === 'Browse' ? 'browse' : title === 'Enter key' || title === 'Claim a key' ? 'key' : title === 'Privacy' ? 'privacy' : title === 'Account' || title === 'Sign in' || title === 'Link Google' ? 'account' : title.toLowerCase();
+  const active = title === 'Browse' ? 'browse' : title === 'Album' ? 'music' : title === 'Enter key' || title === 'Claim a key' ? 'key' : title === 'Privacy' ? 'privacy' : title === 'Account' || title === 'Sign in' || title === 'Link Google' ? 'account' : title.toLowerCase();
   const heading = title === 'Enter key' || title === 'Claim a key' ? 'Access' : title === 'Sign in' || title === 'Link Google' ? 'Account' : title;
   const nav = (name, href, label, icon) => `<a class="nav-link${active === name ? ' is-active' : ''}" href="${href}"${active === name ? ' aria-current="page"' : ''}><span class="nav-icon" aria-hidden="true">${icon}</span><span class="nav-label">${label}</span></a>`;
   const browseIcon = '<svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M9 20v-6h6v6"/></svg>';
@@ -488,12 +492,12 @@ function page(title, content, status = 200, googleScript = false, localScript = 
   const settingsIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9 7 7m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>';
   const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="brand-mark" aria-hidden="true">R<span class="brand-status"></span></span><span class="brand-copy"><strong>ItsRecoil</strong><small>Private workspace</small></span></a><div class="side-group"><span class="side-label">WORKSPACE</span><nav class="side-nav">${nav('browse', '/app', 'Browse', browseIcon)}${nav('music', '/music', 'Music', musicIcon)}${nav('minecraft', '/minecraft', 'Minecraft', gameIcon)}${nav('key', '/login', 'Access key', keyIcon)}${nav('account', '/account', 'Account', accountIcon)}</nav></div><div class="side-bottom"><div class="side-card"><span class="side-card-tag">ACCESS</span><strong>Invite-only browsing</strong><p>Enter a key, then use the Google account connected to it.</p></div>${nav('settings', '/settings', 'Settings', settingsIcon)}${nav('privacy', '/privacy', 'Privacy', privacyIcon)}</div></aside><div class="workspace"><header class="top"><span class="top-title">${escapeHtml(heading)}</span><a class="top-action" href="/settings"><span class="status-dot" aria-hidden="true"></span><span id="connection-state">Online</span></a></header><main class="view view-${active || 'other'}">${content}</main></div></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
-  headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
+  headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:').replace("img-src 'self' data: https://jamisonkaden7-dev.github.io https://cdn-images.dzcdn.net", "img-src 'self' data: https:").replace("frame-src blob:", "frame-src 'self' blob:"));
   if (googleScript) {
     headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://jamisonkaden7-dev.github.io https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   }
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · ItsRecoil</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}<script src="/ui.js?v=features2" defer></script></head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · ItsRecoil</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}<script src="/ui.js?v=features3" defer></script></head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
 }
 
 function googleWidget(env, origin) {
@@ -521,35 +525,113 @@ function settingsPage() {
 }
 
 function musicPage() {
-  return page('Music', `<section class="feature-page music-page"><div class="feature-head"><span class="section-kicker">MUSIC</span><h1>Find something to listen to.</h1><p>Search songs and play available previews. Open a track to listen in Deezer.</p></div><form id="music-search" class="music-search"><input name="q" aria-label="Search songs and artists" placeholder="Search songs or artists" required><button type="submit">Search <span aria-hidden="true">→</span></button></form><div class="music-categories"><span>Try</span><button type="button" data-music-query="indie">Indie</button><button type="button" data-music-query="hip hop">Hip hop</button><button type="button" data-music-query="jazz">Jazz</button><button type="button" data-music-query="electronic">Electronic</button></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Tracks</h2><span>Previews via Deezer</span></div><div id="music-results"><p class="music-empty">Search to see tracks.</p></div></section><aside class="feature-card music-player"><span class="section-kicker">NOW PLAYING</span><img id="music-art" alt="" hidden><h2 id="music-now">Choose a song</h2><p>Previews play here when available.</p><audio id="music-audio" controls preload="none"></audio><div class="player-actions"><button type="button" id="music-prev" aria-label="Previous song">← Previous</button><button type="button" id="music-next" aria-label="Next song">Next →</button></div></aside></div></section>`);
+  return page('Music', `<section class="feature-page music-page"><div class="feature-head"><span class="section-kicker">MUSIC</span><h1>Find something to listen to.</h1><p>Play full tracks from Audius, or browse Deezer's catalog and album track lists.</p></div><div class="music-sources" role="group" aria-label="Music source"><button type="button" data-music-source="audius" class="is-active">Full tracks · Audius</button><button type="button" data-music-source="deezer">Catalog · Deezer</button></div><form id="music-search" class="music-search"><input name="q" aria-label="Search songs and artists" placeholder="Search songs or artists" required><button type="submit">Search <span aria-hidden="true">→</span></button></form><div class="music-categories"><span>Try</span><button type="button" data-music-query="indie">Indie</button><button type="button" data-music-query="hip hop">Hip hop</button><button type="button" data-music-query="jazz">Jazz</button><button type="button" data-music-query="electronic">Electronic</button></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Tracks</h2><span id="music-source-note">Full tracks via Audius</span></div><div id="music-results"><p class="music-empty">Loading full tracks…</p></div></section>${musicPlayerMarkup()}</div></section>`);
+}
+
+function musicPlayerMarkup() {
+  return `<aside class="feature-card music-player"><span class="section-kicker">NOW PLAYING</span><img id="music-art" alt="" hidden><h2 id="music-now">Choose a song</h2><p id="music-playback-note">Full tracks play here when available.</p><audio id="music-audio" controls preload="none"></audio><div class="player-actions"><button type="button" id="music-prev" aria-label="Previous song">← Previous</button><button type="button" id="music-next" aria-label="Next song">Next →</button></div><a id="music-open" class="music-open" href="#" target="_blank" rel="noopener noreferrer" hidden>Open artist page ↗</a></aside>`;
+}
+
+function musicAlbumPage(path) {
+  const [, , , source, id] = path.split('/');
+  return page('Album', `<section class="feature-page music-page" id="music-album" data-source="${source}" data-id="${id}"><div class="feature-head"><span class="section-kicker">MUSIC / ALBUM</span><a class="music-back" href="/music">← Back to Music</a></div><div id="music-album-hero" class="music-album-hero"><h1>Loading album…</h1></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Album tracks</h2><span id="music-source-note"></span></div><div id="music-results"><p class="music-empty">Loading tracks…</p></div></section>${musicPlayerMarkup()}</div></section>`);
+}
+
+function audiusTrack(track, collectionName = '') {
+  const albumId = track.album_backlink?.playlist_id || '';
+  return {
+    kind: 'song', source: 'audius', full: true, id: track.id,
+    trackName: track.title || '', artistName: track.user?.name || track.artist || '',
+    collectionName: collectionName || track.album_backlink?.playlist_name || '',
+    albumId: String(albumId), artworkUrl100: track.artwork?.['480x480'] || track.artwork?.['150x150'] || '',
+    previewUrl: `/music-stream?id=${encodeURIComponent(track.id || '')}`,
+    trackViewUrl: track.permalink ? `https://audius.co${track.permalink}` : '',
+    duration: Number(track.duration) || 0
+  };
+}
+
+function deezerTrack(track, collectionName = '', albumId = '') {
+  return {
+    kind: 'song', source: 'deezer', full: false, id: String(track.id || ''),
+    trackName: track.title || '', artistName: track.artist?.name || '',
+    collectionName: collectionName || track.album?.title || '',
+    albumId: String(albumId || track.album?.id || ''),
+    artworkUrl100: track.album?.cover_medium || '',
+    previewUrl: track.preview || '', trackViewUrl: track.link || '',
+    duration: Number(track.duration) || 0
+  };
+}
+
+function musicJson(value, status = 200) {
+  return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': status === 200 ? 'public, max-age=120' : 'no-store' } });
 }
 
 async function musicApi(url) {
   const query = String(url.searchParams.get('q') || '').trim().slice(0, 100);
-  if (!query) return new Response(JSON.stringify({ resultCount: 0, results: [] }), { headers: { 'Content-Type': 'application/json' } });
+  const sourceName = url.searchParams.get('source') === 'deezer' ? 'deezer' : 'audius';
+  if (!query) return musicJson({ resultCount: 0, results: [] });
   try {
-    const source = new URL('https://api.deezer.com/search');
-    source.searchParams.set('q', query);
-    source.searchParams.set('limit', '35');
+    const source = new URL(sourceName === 'audius' ? 'https://api.audius.co/v1/tracks/search' : 'https://api.deezer.com/search');
+    source.searchParams.set(sourceName === 'audius' ? 'query' : 'q', query);
+    if (sourceName === 'audius') source.searchParams.set('app_name', 'ItsRecoil');
+    else source.searchParams.set('limit', '35');
     const upstream = await fetch(source, { headers: { Accept: 'application/json' } });
     if (!upstream.ok) throw new Error('Music API unavailable');
     const data = await upstream.json();
     if (!Array.isArray(data.data)) throw new Error('Invalid music response');
-    const results = data.data.map(track => ({
-      kind: 'song', trackName: track.title, artistName: track.artist?.name,
-      collectionName: track.album?.title, artworkUrl100: track.album?.cover_medium,
-      previewUrl: track.preview, trackViewUrl: track.link
-    }));
-    return new Response(JSON.stringify({ resultCount: results.length, results }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=120', 'Access-Control-Allow-Origin': '*' } });
+    const results = sourceName === 'audius' ? data.data.filter(track => track.is_streamable !== false && track.access?.stream !== false).map(track => audiusTrack(track)) : data.data.map(track => deezerTrack(track));
+    return musicJson({ resultCount: results.length, results, source: sourceName });
   } catch {
-    return new Response(JSON.stringify({ error: 'Music search is unavailable' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+    return musicJson({ error: 'Music search is unavailable' }, 502);
   }
 }
 
+async function musicAlbumApi(url) {
+  const sourceName = url.searchParams.get('source') === 'deezer' ? 'deezer' : 'audius';
+  const id = String(url.searchParams.get('id') || '');
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) return musicJson({ error: 'Invalid album' }, 400);
+  try {
+    const source = new URL(sourceName === 'audius' ? `https://api.audius.co/v1/playlists/${id}` : `https://api.deezer.com/album/${id}`);
+    if (sourceName === 'audius') source.searchParams.set('app_name', 'ItsRecoil');
+    const upstream = await fetch(source, { headers: { Accept: 'application/json' } });
+    if (!upstream.ok) throw new Error('Album unavailable');
+    const raw = await upstream.json();
+    const album = sourceName === 'audius' ? (Array.isArray(raw.data) ? raw.data[0] : raw.data) : raw;
+    if (!album || !Array.isArray(sourceName === 'audius' ? album.tracks : album.tracks?.data)) throw new Error('Invalid album');
+    const results = sourceName === 'audius' ? album.tracks.map(track => audiusTrack(track, album.playlist_name)) : album.tracks.data.map(track => deezerTrack({ ...track, album: { id, title: album.title, cover_medium: album.cover_medium } }, album.title, id));
+    return musicJson({ title: sourceName === 'audius' ? album.playlist_name : album.title, artist: sourceName === 'audius' ? album.user?.name : album.artist?.name, artwork: sourceName === 'audius' ? album.artwork?.['480x480'] : album.cover_medium, trackCount: results.length, source: sourceName, link: sourceName === 'audius' ? (album.permalink ? `https://audius.co${album.permalink}` : '') : album.link, results });
+  } catch { return musicJson({ error: 'Album unavailable' }, 502); }
+}
+
+async function musicStream(request, url) {
+  const id = String(url.searchParams.get('id') || '');
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) return new Response('Invalid track', { status: 400 });
+  const source = `https://api.audius.co/v1/tracks/${encodeURIComponent(id)}/stream?app_name=ItsRecoil`;
+  try {
+    const headers = new Headers({ Accept: 'audio/mpeg' });
+    const range = request.headers.get('Range');
+    if (range && /^bytes=\d*-\d*$/.test(range)) headers.set('Range', range);
+    const upstream = await fetch(source, { headers, redirect: 'follow' });
+    if (!upstream.ok || !upstream.body) return new Response('Track unavailable', { status: 502 });
+    const outputHeaders = new Headers({ 'Content-Type': upstream.headers.get('Content-Type') || 'audio/mpeg', 'Cache-Control': 'private, max-age=300', 'Accept-Ranges': 'bytes', 'X-Content-Type-Options': 'nosniff' });
+    for (const name of ['Content-Length', 'Content-Range']) if (upstream.headers.has(name)) outputHeaders.set(name, upstream.headers.get(name));
+    return new Response(upstream.body, { status: upstream.status, headers: outputHeaders });
+  } catch { return new Response('Track unavailable', { status: 502 }); }
+}
+
 function minecraftPage() {
-  const response = page('Minecraft', `<section class="feature-page game-page"><div class="feature-head"><span class="section-kicker">MINECRAFT</span><h1>Eaglercraft launcher</h1><p>Load the Eaglercraft HTML file you provided. The game runs locally in your browser; the site does not upload the file.</p></div><section class="feature-card game-launcher"><div><h2>Launch Minecraft</h2><p id="minecraft-message">Select the supplied Eaglercraft HTML file.</p><div class="game-controls"><label class="file-button" for="minecraft-file">Choose HTML file</label><input id="minecraft-file" type="file" accept=".html,text/html"><button id="minecraft-launch" type="button" disabled>Launch game →</button><button id="minecraft-fullscreen" type="button">Fullscreen</button></div></div></section><iframe id="minecraft-frame" title="Eaglercraft" allow="fullscreen; gamepad; clipboard-read; clipboard-write" hidden></iframe></section>`);
-  response.headers.set('Content-Security-Policy', "default-src 'self' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https:; style-src 'self' 'unsafe-inline' blob: data: https:; img-src 'self' blob: data: https:; media-src 'self' blob: data: https:; connect-src 'self' blob: data: https: wss:; frame-src blob:; worker-src blob:; form-action 'self'; base-uri 'none'");
+  const response = page('Minecraft', `<section class="feature-page game-page"><div class="feature-head"><span class="section-kicker">MINECRAFT</span><h1>ItsRecoil Minecraft</h1><p>Launch Eaglercraft 26.2 right here. The game may take a moment to download on its first launch.</p></div><section class="feature-card game-launcher"><div><h2>Ready to play</h2><p id="minecraft-message">Click Launch game to start.</p><div class="game-controls"><button id="minecraft-launch" type="button">Launch game →</button><button id="minecraft-fullscreen" type="button">Fullscreen</button></div></div></section><iframe id="minecraft-frame" title="ItsRecoil Minecraft" allow="fullscreen; gamepad; pointer-lock" sandbox="allow-scripts allow-pointer-lock allow-downloads allow-forms" hidden></iframe></section>`);
+  response.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy').replace("frame-src 'self' blob:", "frame-src 'self' blob:"));
   return response;
+}
+
+async function minecraftClient() {
+  const source = 'https://raw.githubusercontent.com/3lit3-Pl4y3r/eaglercraft-26.2/a64bac629f9c0145015751f90f2ee2641951d0f1/index.html';
+  try {
+    const upstream = await fetch(source);
+    if (!upstream.ok || !upstream.body) throw new Error('Game unavailable');
+    return new Response(upstream.body, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=86400', 'Content-Security-Policy': "default-src 'self' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https:; style-src 'self' 'unsafe-inline' blob: data: https:; img-src 'self' blob: data: https:; media-src 'self' blob: data: https:; connect-src 'self' blob: data: https: wss:; frame-src blob:; worker-src blob:; form-action 'self'; base-uri 'none'; frame-ancestors 'self'", 'X-Content-Type-Options': 'nosniff' } });
+  } catch { return new Response('Minecraft is unavailable right now.', { status: 502 }); }
 }
 
 async function linkPage(user, env, formToken, origin) {
