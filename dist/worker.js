@@ -305,11 +305,13 @@ main.view{display:block;min-height:calc(100vh - 112px);padding:27px 29px 44px}
 .browse-screen .browse-helper{margin:15px 0 0;color:#858585;font-size:12px}.session-panel h2{margin:26px 0 4px}.session-user{margin:0 0 24px;color:#a6a6a6;font-size:13px;overflow-wrap:anywhere}.session-actions{border-top:1px solid #2b2b2b}.session-actions>a{display:flex;justify-content:space-between;gap:12px;padding:16px 0;border-bottom:1px solid #2b2b2b;color:#dedede;text-decoration:none;font-size:13px}.session-actions>a:hover{color:#fff}.session-actions>a span{color:#7d7d7d}.session-actions form{margin-top:17px}.session-actions .chip{padding:5px 0;color:#aaa}
 .feature-page{width:min(1190px,100%);margin:0 auto}.feature-head{margin:9px 0 28px}.feature-head h1{margin:12px 0 8px;color:#f4f4f4;font-size:clamp(32px,4vw,48px);letter-spacing:-.055em;font-weight:600}.feature-head p{margin:0;color:#999;font-size:14px;line-height:1.6}.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.feature-card{min-width:0;padding:25px;border:1px solid #292929;border-radius:16px;background:#111}.feature-card h2{margin:0 0 18px;font-size:19px;letter-spacing:-.025em;font-weight:600}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 0;border-top:1px solid #292929;color:#ededed}.setting-row strong,.setting-row small{display:block}.setting-row strong{font-size:13px;font-weight:600}.setting-row small{margin-top:5px;color:#858585;font-size:11px;line-height:1.45}.setting-row select{min-width:124px;padding:10px 28px 10px 11px;border:1px solid #383838;border-radius:8px;background:#1b1b1b;color:#ededed;font-size:12px}.setting-row input[type=checkbox]{width:18px;height:18px;accent-color:#dcdcdc}.connection-readout{padding:7px 10px;border-radius:7px;background:#17331f;color:#64c67e;font-size:12px}.connection-readout[data-state=offline]{background:#36211f;color:#ed8a7f}.connection-readout[data-state=testing]{background:#31271b;color:#e5bc79}
 .music-search{display:flex;gap:8px;padding:7px;border:1px solid #383838;border-radius:12px;background:#151515}.music-search input{flex:1;min-width:0;padding:8px 15px;border:0;outline:0;background:transparent;color:#f3f3f3;font-size:14px}.music-search button,.game-controls button,.file-button{display:inline-flex;justify-content:center;align-items:center;gap:12px;padding:13px 17px;border:1px solid #3a3a3a;border-radius:8px;background:#e9e9e9;color:#111;font-size:12px;font-weight:600}.music-search button span{font-size:17px}.music-categories{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:16px 0 25px}.music-categories span{color:#777;font-size:11px;margin-right:4px}.music-categories button{padding:7px 11px;border:1px solid #303030;border-radius:7px;background:#171717;color:#bbb;font-size:11px}.music-categories button:hover{color:#fff;border-color:#666}.music-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(270px,.75fr);gap:18px}.feature-card-head{display:flex;justify-content:space-between;gap:15px;align-items:center}.feature-card-head span{color:#777;font-size:11px}.track{display:grid;grid-template-columns:47px minmax(0,1fr) 38px auto;gap:12px;align-items:center;min-height:69px;padding:11px 0;border-top:1px solid #292929}.track img{width:45px;height:45px;border-radius:7px;object-fit:cover;background:#222}.track strong,.track span{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.track strong{font-size:13px;font-weight:600}.track span{margin-top:4px;color:#858585;font-size:11px}.track button{width:34px;height:34px;border:1px solid #3a3a3a;border-radius:7px;background:#202020;color:#eee;font-size:12px}.track a{color:#a4a4a4;font-size:11px;text-decoration:none}.track a:hover{color:#fff}.music-empty{padding:35px 0;color:#888;font-size:13px}.music-player{align-self:start;position:sticky;top:27px}.music-player img{width:100%;max-width:235px;aspect-ratio:1;object-fit:cover;border-radius:12px;margin:23px 0}.music-player h2{margin:22px 0 8px}.music-player p{color:#888;font-size:12px}.music-player audio{width:100%;margin-top:18px}.player-actions{display:flex;gap:9px;margin-top:15px}.player-actions button{flex:1;padding:10px;border:1px solid #383838;border-radius:8px;background:#1a1a1a;color:#ddd;font-size:11px}
-.game-launcher{display:flex;align-items:center;justify-content:space-between;gap:20px}.game-launcher h2{margin-bottom:8px}.game-launcher p{color:#888;font-size:12px}.game-controls{display:flex;flex-wrap:wrap;gap:9px;margin-top:21px}.game-controls input{position:absolute;width:1px;height:1px;opacity:0}.game-controls button:last-child{background:#191919;color:#ddd}.game-controls button:disabled{opacity:.4;cursor:not-allowed}.game-page iframe{display:block;width:100%;height:min(72vh,780px);margin-top:20px;border:1px solid #393939;border-radius:12px;background:#050505}.game-page iframe[hidden]{display:none}
+.music-sources{display:flex;gap:7px;margin:0 0 16px}.music-sources button{padding:9px 14px;border:1px solid #323232;border-radius:8px;background:#171717;color:#aaa;font-size:12px}.music-sources button.is-active{background:#ececec;border-color:#ececec;color:#111}.music-page .track{grid-template-columns:47px minmax(0,1fr) 40px 38px auto}.track-info{min-width:0}.track-info span{display:flex;align-items:center;gap:4px}.track-album{color:#aaa;text-decoration:underline;text-decoration-color:#555;text-underline-offset:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.track-album:hover{color:#fff}.track-duration{color:#888;font-size:11px;text-align:right}.music-open,.music-back,.music-album-hero a{display:inline-block;margin-top:20px;color:#bcbcbc;font-size:12px;text-decoration:none}.music-open:hover,.music-back:hover,.music-album-hero a:hover{color:#fff}.music-album-hero{display:flex;align-items:center;gap:28px;min-height:185px;margin:22px 0 26px}.music-album-hero img{width:180px;height:180px;object-fit:cover;border-radius:12px}.music-album-hero h1{margin:13px 0 8px;font-size:clamp(26px,3vw,42px)}.music-album-hero p{color:#999;font-size:13px}.game-launcher{display:flex;align-items:center;justify-content:space-between;gap:20px}.game-launcher h2{margin-bottom:8px}.game-launcher p{color:#888;font-size:12px}.game-controls{display:flex;flex-wrap:wrap;gap:9px;margin-top:21px}.game-controls button:last-child{background:#191919;color:#ddd}.game-controls button:disabled{opacity:.4;cursor:not-allowed}.game-page iframe{display:block;width:100%;height:min(72vh,780px);margin-top:20px;border:1px solid #393939;border-radius:12px;background:#050505}.game-page iframe[hidden]{display:none}
 .go,.key-search .go{font-size:0!important;display:grid;place-items:center}.go:after,.key-search .go:after{content:'';display:block;width:22px;height:22px;background:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M4 12h15m-6-6 6 6-6 6"/%3E%3C/svg%3E') center/contain no-repeat}
 html[data-cursor=custom],html[data-cursor=custom] *{cursor:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="20" height="24" viewBox="0 0 20 24"%3E%3Cpath d="M2 1.5v17l4.3-4 3.1 6.8 2.8-1.3-3.1-6.9h6.5z" fill="%23131315" stroke="%23fff" stroke-width="2.2" stroke-linejoin="round"/%3E%3C/svg%3E') 2 2,default!important}html[data-cursor=custom] a,html[data-cursor=custom] button,html[data-cursor=custom] label,html[data-cursor=custom] select{cursor:pointer!important}html[data-cursor=custom] input,html[data-cursor=custom] textarea,html[data-cursor=custom] [contenteditable=true]{cursor:text!important}
 html[data-theme=light]{color-scheme:light;--surface:#f0f1f2;--sidebar:#fff;--text:#1b1c20;--muted:#5c6168}html[data-theme=light] body{background:#e8eaec;color:#1b1c20}html[data-theme=light] .shell{background:#fff;border-color:#d9dcdf}html[data-theme=light] .sidebar{background:#fff;border-color:#dfe1e4}html[data-theme=light] .workspace{background:#f7f8f9}html[data-theme=light] .top{background:#fff;border-color:#e1e3e6}html[data-theme=light] .top-title,html[data-theme=light] .brand,html[data-theme=light] .center h1,html[data-theme=light] .feature-head h1{color:#1a1c20}html[data-theme=light] .brand-mark{background:#1b1d21;color:#fff}html[data-theme=light] .nav-link,html[data-theme=light] .side-bottom .nav-link{color:#5d6269}html[data-theme=light] .nav-link:hover,html[data-theme=light] .nav-link.is-active,html[data-theme=light] .side-nav .nav-link:first-child.is-active{background:#e9ebed;color:#16181b}html[data-theme=light] .side-group,html[data-theme=light] .side-bottom{border-color:#e1e3e5}html[data-theme=light] .side-card,html[data-theme=light] .center,html[data-theme=light] .key-main,html[data-theme=light] .access-panel,html[data-theme=light] .feature-card{background:#fff;border-color:#dfe2e5;color:#1b1c20}html[data-theme=light] .side-card strong,html[data-theme=light] .access-panel h2,html[data-theme=light] .setting-row,html[data-theme=light] .feature-card h2,html[data-theme=light] .track strong{color:#22252a}html[data-theme=light] .subhead,html[data-theme=light] .center .subhead,html[data-theme=light] .feature-head p{color:#646970}html[data-theme=light] .key-search,html[data-theme=light] .music-search,html[data-theme=light] .setting-row select{background:#f5f6f7;border-color:#d4d7da;color:#25282c}html[data-theme=light] .search input,html[data-theme=light] .music-search input{color:#1f2226}html[data-theme=light] .search input::placeholder{color:#8c9197}html[data-theme=light] .go,html[data-theme=light] .music-search button{background:#202328;color:#fff}html[data-theme=light] .go:after{filter:invert(1)}html[data-theme=light] .setting-row,html[data-theme=light] .track,html[data-theme=light] .session-actions,html[data-theme=light] .session-actions>a{border-color:#e3e5e7}html[data-theme=light] .top-action,html[data-theme=light] .music-categories button,html[data-theme=light] .track button,html[data-theme=light] .player-actions button{background:#f3f4f5;border-color:#d9dcdf;color:#4a5057}html[data-theme=light] .game-page iframe{border-color:#d4d7da}html[data-theme=light] .session-actions>a{color:#333}html[data-theme=light] .account-row strong{color:#202328}
+html[data-theme=light] .music-sources button{background:#f3f4f5;border-color:#d9dcdf;color:#4a5057}html[data-theme=light] .music-sources button.is-active{background:#202328;color:#fff}html[data-theme=light] .track-album,html[data-theme=light] .music-open,html[data-theme=light] .music-back,html[data-theme=light] .music-album-hero a{color:#454b53}html[data-theme=light] .music-album-hero p,html[data-theme=light] .track-duration{color:#646970}
 @media(max-width:900px){.settings-grid,.music-layout{grid-template-columns:1fr}.music-player{position:static}}
+@media(max-width:600px){.music-page .track{grid-template-columns:42px minmax(0,1fr) 32px}.track-duration,.track-open{display:none}.music-album-hero{align-items:flex-start}.music-album-hero img{width:110px;height:110px}.music-sources{flex-wrap:wrap}}
 @media(max-width:1000px){.key-screen{grid-template-columns:1fr}.access-panel{display:grid;grid-template-columns:1fr 1fr;column-gap:20px}.access-panel .section-kicker,.access-panel h2{grid-column:1/-1}.access-panel h2{margin:15px 0}}
 @media(max-width:720px){.shell{min-height:100vh;margin:0;border:0;border-radius:0}.sidebar{width:64px;min-height:100vh;padding:20px 8px}.brand{display:flex;justify-content:center;padding:0 0 36px}.brand-copy,.side-label,.nav-label,.side-card{display:none}.brand-status{display:block}.side-group{padding-bottom:16px}.nav-link,.side-nav .nav-link:first-child{justify-content:center;padding:9px 0}.nav-icon{width:20px}.workspace{min-height:100vh}.top{padding:0 20px}.top-action{font-size:0;padding:10px}.status-dot{width:8px;height:8px}main.view{min-height:calc(100vh - 74px);padding:20px}.center{padding:25px;margin:12px auto}.key-screen{padding:0;margin:0}.key-main,.access-panel{padding:27px 23px}.access-panel{display:block}}
 @media(max-width:480px){.sidebar{width:54px;padding:17px 6px}.brand-mark{width:32px;height:32px}.top{height:62px;padding:0 16px}.top-title{font-size:18px}main.view{min-height:calc(100vh - 62px);padding:14px}.key-main,.access-panel{padding:25px 20px}.key-screen h1{font-size:35px}.key-search{min-height:58px;padding:4px}.key-search input{height:48px;padding:0 10px}.key-search .go{width:48px;height:48px}.center:not(.key-screen){padding:24px 20px}}
@@ -364,65 +366,83 @@ const featureJs = `(()=>{
   if(cursor){cursor.checked=!!prefs.cursor;cursor.addEventListener('change',()=>{prefs.cursor=cursor.checked;save();apply()})}
 
   const musicForm=document.getElementById('music-search');
-  if(musicForm){
+  const albumView=document.getElementById('music-album');
+  if(musicForm||albumView){
     const list=document.getElementById('music-results');
     const audio=document.getElementById('music-audio');
     const now=document.getElementById('music-now');
     const art=document.getElementById('music-art');
     const next=document.getElementById('music-next');
     const prev=document.getElementById('music-prev');
-    let songs=[],index=-1;
+    const note=document.getElementById('music-playback-note');
+    const open=document.getElementById('music-open');
+    const sourceNote=document.getElementById('music-source-note');
+    let songs=[],index=-1,source='audius';
     const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const duration=seconds=>seconds?Math.floor(seconds/60)+':'+String(Math.floor(seconds%60)).padStart(2,'0'):'';
+    const safeLink=value=>{try{const url=new URL(value);return url.protocol==='https:'?url.href:''}catch{return ''}};
+    function render(){
+      list.innerHTML=songs.length?songs.map((s,i)=>{
+        const album=s.albumId?'<a class="track-album" href="/music/album/'+esc(s.source)+'/'+encodeURIComponent(s.albumId)+'">'+esc(s.collectionName||'View album')+'</a>':esc(s.collectionName||'');
+        const link=safeLink(s.trackViewUrl);
+        return '<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div class="track-info"><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+album+'</span></div><span class="track-duration">'+duration(s.duration)+'</span><button type="button" data-play="'+i+'" aria-label="Play '+esc(s.trackName)+'">▶</button>'+(link?'<a class="track-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on '+(s.source==='audius'?'Audius':'Deezer')+'">Open ↗</a>':'')+'</article>';
+      }).join(''):'<p class="music-empty">No playable tracks found. Try another search.</p>';
+    }
     function play(i){
       if(!songs[i])return;
       index=i;const s=songs[i];
-      audio.src=s.previewUrl||'';audio.play().catch(()=>{});
+      audio.src=s.previewUrl||'';audio.play().catch(()=>{note.textContent='Playback is unavailable for this track. Open it on '+(s.source==='audius'?'Audius':'Deezer')+'.'});
       now.textContent=s.trackName+' — '+s.artistName;
       art.src=s.artworkUrl100||'';art.hidden=!s.artworkUrl100;
+      note.textContent=s.full?'Full track · Audius':'30-second preview · Deezer';
+      const link=safeLink(s.trackViewUrl);open.href=link||'#';open.hidden=!link;open.textContent='Open on '+(s.source==='audius'?'Audius':'Deezer')+' ↗';
       list.querySelectorAll('[data-play]').forEach((button,n)=>button.setAttribute('aria-label',(n===i?'Playing ':'Play ')+songs[n].trackName));
     }
     async function search(query){
+      if(!query)return;
       list.innerHTML='<p class="music-empty">Searching…</p>';
       try{
-        const res=await fetch('/music-api?q='+encodeURIComponent(query));
+        const res=await fetch('/music-api?q='+encodeURIComponent(query)+'&source='+source);
         if(!res.ok)throw Error('Search unavailable');
-        const data=await res.json();songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);
-        list.innerHTML=songs.length?songs.map((s,i)=>'<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+esc(s.collectionName||'')+'</span></div><button type="button" data-play="'+i+'" aria-label="Play '+esc(s.trackName)+'">▶</button><a href="'+esc(s.trackViewUrl||'#')+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on Deezer">Open ↗</a></article>').join(''):'<p class="music-empty">No playable previews found. Try another search.</p>';
+        const data=await res.json();songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);index=-1;render();
       }catch{list.innerHTML='<p class="music-empty">Search is unavailable right now. Please try again.</p>'}
     }
-    musicForm.addEventListener('submit',e=>{e.preventDefault();search(musicForm.querySelector('input').value.trim())});
+    if(musicForm){
+      musicForm.addEventListener('submit',e=>{e.preventDefault();search(musicForm.querySelector('input').value.trim())});
+      document.querySelectorAll('[data-music-source]').forEach(button=>button.addEventListener('click',()=>{
+        source=button.dataset.musicSource;document.querySelectorAll('[data-music-source]').forEach(b=>b.classList.toggle('is-active',b===button));
+        sourceNote.textContent=source==='audius'?'Full tracks via Audius':'30-second previews via Deezer';
+        search(musicForm.querySelector('input').value.trim()||'jazz');
+      }));
+      document.querySelectorAll('[data-music-query]').forEach(b=>b.addEventListener('click',()=>{musicForm.querySelector('input').value=b.dataset.musicQuery;search(b.dataset.musicQuery)}));
+      musicForm.querySelector('input').value='jazz';search('jazz');
+    }
+    if(albumView){
+      source=albumView.dataset.source;
+      fetch('/music-album-api?source='+source+'&id='+encodeURIComponent(albumView.dataset.id)).then(res=>{if(!res.ok)throw Error('Album unavailable');return res.json()}).then(data=>{
+        songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);render();
+        sourceNote.textContent=source==='audius'?'Full tracks via Audius':'Complete track list · Deezer previews';
+        const hero=document.getElementById('music-album-hero');
+        const link=safeLink(data.link);
+        hero.innerHTML=(data.artwork?'<img alt="" src="'+esc(data.artwork)+'">':'')+'<div><span class="section-kicker">'+(source==='audius'?'FULL ALBUM':'ALBUM')+'</span><h1>'+esc(data.title)+'</h1><p>'+esc(data.artist||'')+' · '+data.trackCount+' tracks</p>'+(link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Open on '+(source==='audius'?'Audius':'Deezer')+' ↗</a>':'')+'</div>';
+      }).catch(()=>{document.getElementById('music-album-hero').innerHTML='<h1>Album unavailable.</h1>';list.innerHTML='<p class="music-empty">Please try another album.</p>'});
+    }
     list.addEventListener('click',e=>{const button=e.target.closest('[data-play]');if(button)play(Number(button.dataset.play))});
     next.addEventListener('click',()=>play(index+1));prev.addEventListener('click',()=>play(index-1));
     audio.addEventListener('ended',()=>play(index+1));
-    document.querySelectorAll('[data-music-query]').forEach(b=>b.addEventListener('click',()=>{musicForm.querySelector('input').value=b.dataset.musicQuery;search(b.dataset.musicQuery)}));
   }
 
-  const gameFile=document.getElementById('minecraft-file');
-  if(gameFile){
+  const gameLaunch=document.getElementById('minecraft-launch');
+  if(gameLaunch){
     const frame=document.getElementById('minecraft-frame');
-    const launch=document.getElementById('minecraft-launch');
     const message=document.getElementById('minecraft-message');
     const full=document.getElementById('minecraft-fullscreen');
-    let gameUrl=null;
-    gameFile.addEventListener('change',()=>{const file=gameFile.files?.[0];launch.disabled=!file;message.textContent=file?file.name+' ready to launch.':'Select the supplied Eaglercraft HTML file.'});
-    launch.addEventListener('click',async()=>{
-      const file=gameFile.files?.[0];if(!file)return;
-      launch.disabled=true;message.textContent='Preparing ItsRecoil Minecraft…';
-      try{
-        const cut=Math.max(0,file.size-200000);
-        let tail=await file.slice(cut).text();
-        tail=tail.replace('<title>Eaglercraft 26.2 (zeus/master)</title>','<title>ItsRecoil Minecraft</title>')
-          .replace('Loading Eaglercraft 26.2 runtime…','Loading ItsRecoil Minecraft…')
-          .replace('</head>','<style>#loading_screen{background:#090909!important;color:#f2f2f2!important}#loading_screen img{display:none!important}#boot_status{font-family:Arial,Helvetica,sans-serif!important;color:#eee!important;font-size:18px!important;letter-spacing:-.02em!important}</style></head>');
-        const themed=new Blob([file.slice(0,cut),tail],{type:'text/html'});
-        if(gameUrl)URL.revokeObjectURL(gameUrl);
-        gameUrl=URL.createObjectURL(themed);frame.src=gameUrl;frame.hidden=false;
-        message.textContent='ItsRecoil · loading Minecraft';
-        frame.addEventListener('load',()=>{message.textContent='Minecraft is ready.'},{once:true});
-      }catch{message.textContent='Could not open that HTML file.'}finally{launch.disabled=false}
+    gameLaunch.addEventListener('click',()=>{
+      gameLaunch.disabled=true;message.textContent='Loading ItsRecoil Minecraft…';
+      frame.src='/minecraft-client';frame.hidden=false;
+      frame.addEventListener('load',()=>{message.textContent='Minecraft is ready.';gameLaunch.disabled=false},{once:true});
     });
     full.addEventListener('click',()=>frame.requestFullscreen?.());
-    window.addEventListener('pagehide',()=>{if(gameUrl)URL.revokeObjectURL(gameUrl)});
   }
 })();`;
 
@@ -443,9 +463,13 @@ export default {
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
       if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + '\n' + featureJs, { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
       if (path === '/music-api' && request.method === 'GET') return musicApi(url);
+      if (path === '/music-album-api' && request.method === 'GET') return musicAlbumApi(url);
+      if (path === '/music-stream' && request.method === 'GET') return musicStream(request, url);
       if (path === '/music' && request.method === 'GET') return musicPage();
+      if (/^\/music\/album\/(audius|deezer)\/[A-Za-z0-9_-]+$/.test(path) && request.method === 'GET') return musicAlbumPage(path);
       if (path === '/settings' && request.method === 'GET') return settingsPage();
       if (path === '/minecraft' && request.method === 'GET') return minecraftPage();
+      if (path === '/minecraft-client' && request.method === 'GET') return minecraftClient();
       if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? keyPage() : startLogin(env, origin);
       if (path === '/access' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) {
         const form = await request.formData();
@@ -900,7 +924,7 @@ const css = `
 `;
 
 function page(title, content, status = 200, googleScript = false, localScript = false, showBoot = false) {
-  const active = title === 'Browse' ? 'browse' : title === 'Enter key' || title === 'Claim a key' ? 'key' : title === 'Privacy' ? 'privacy' : title === 'Account' || title === 'Sign in' || title === 'Link Google' ? 'account' : title.toLowerCase();
+  const active = title === 'Browse' ? 'browse' : title === 'Album' ? 'music' : title === 'Enter key' || title === 'Claim a key' ? 'key' : title === 'Privacy' ? 'privacy' : title === 'Account' || title === 'Sign in' || title === 'Link Google' ? 'account' : title.toLowerCase();
   const heading = title === 'Enter key' || title === 'Claim a key' ? 'Access' : title === 'Sign in' || title === 'Link Google' ? 'Account' : title;
   const nav = (name, href, label, icon) => `<a class="nav-link${active === name ? ' is-active' : ''}" href="${href}"${active === name ? ' aria-current="page"' : ''}><span class="nav-icon" aria-hidden="true">${icon}</span><span class="nav-label">${label}</span></a>`;
   const browseIcon = '<svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M9 20v-6h6v6"/></svg>';
@@ -912,12 +936,12 @@ function page(title, content, status = 200, googleScript = false, localScript = 
   const settingsIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9 7 7m10 10 2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>';
   const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="brand-mark" aria-hidden="true">R<span class="brand-status"></span></span><span class="brand-copy"><strong>ItsRecoil</strong><small>Private workspace</small></span></a><div class="side-group"><span class="side-label">WORKSPACE</span><nav class="side-nav">${nav('browse', '/app', 'Browse', browseIcon)}${nav('music', '/music', 'Music', musicIcon)}${nav('minecraft', '/minecraft', 'Minecraft', gameIcon)}${nav('key', '/login', 'Access key', keyIcon)}${nav('account', '/account', 'Account', accountIcon)}</nav></div><div class="side-bottom"><div class="side-card"><span class="side-card-tag">ACCESS</span><strong>Invite-only browsing</strong><p>Enter a key, then use the Google account connected to it.</p></div>${nav('settings', '/settings', 'Settings', settingsIcon)}${nav('privacy', '/privacy', 'Privacy', privacyIcon)}</div></aside><div class="workspace"><header class="top"><span class="top-title">${escapeHtml(heading)}</span><a class="top-action" href="/settings"><span class="status-dot" aria-hidden="true"></span><span id="connection-state">Online</span></a></header><main class="view view-${active || 'other'}">${content}</main></div></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
-  headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
+  headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:').replace("img-src 'self' data: https://jamisonkaden7-dev.github.io https://cdn-images.dzcdn.net", "img-src 'self' data: https:").replace("frame-src blob:", "frame-src 'self' blob:"));
   if (googleScript) {
     headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://jamisonkaden7-dev.github.io https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   }
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · ItsRecoil</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}<script src="/ui.js?v=features2" defer></script></head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · ItsRecoil</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}<script src="/ui.js?v=features3" defer></script></head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
 }
 
 function googleWidget(env, origin) {
@@ -945,35 +969,113 @@ function settingsPage() {
 }
 
 function musicPage() {
-  return page('Music', `<section class="feature-page music-page"><div class="feature-head"><span class="section-kicker">MUSIC</span><h1>Find something to listen to.</h1><p>Search songs and play available previews. Open a track to listen in Deezer.</p></div><form id="music-search" class="music-search"><input name="q" aria-label="Search songs and artists" placeholder="Search songs or artists" required><button type="submit">Search <span aria-hidden="true">→</span></button></form><div class="music-categories"><span>Try</span><button type="button" data-music-query="indie">Indie</button><button type="button" data-music-query="hip hop">Hip hop</button><button type="button" data-music-query="jazz">Jazz</button><button type="button" data-music-query="electronic">Electronic</button></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Tracks</h2><span>Previews via Deezer</span></div><div id="music-results"><p class="music-empty">Search to see tracks.</p></div></section><aside class="feature-card music-player"><span class="section-kicker">NOW PLAYING</span><img id="music-art" alt="" hidden><h2 id="music-now">Choose a song</h2><p>Previews play here when available.</p><audio id="music-audio" controls preload="none"></audio><div class="player-actions"><button type="button" id="music-prev" aria-label="Previous song">← Previous</button><button type="button" id="music-next" aria-label="Next song">Next →</button></div></aside></div></section>`);
+  return page('Music', `<section class="feature-page music-page"><div class="feature-head"><span class="section-kicker">MUSIC</span><h1>Find something to listen to.</h1><p>Play full tracks from Audius, or browse Deezer's catalog and album track lists.</p></div><div class="music-sources" role="group" aria-label="Music source"><button type="button" data-music-source="audius" class="is-active">Full tracks · Audius</button><button type="button" data-music-source="deezer">Catalog · Deezer</button></div><form id="music-search" class="music-search"><input name="q" aria-label="Search songs and artists" placeholder="Search songs or artists" required><button type="submit">Search <span aria-hidden="true">→</span></button></form><div class="music-categories"><span>Try</span><button type="button" data-music-query="indie">Indie</button><button type="button" data-music-query="hip hop">Hip hop</button><button type="button" data-music-query="jazz">Jazz</button><button type="button" data-music-query="electronic">Electronic</button></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Tracks</h2><span id="music-source-note">Full tracks via Audius</span></div><div id="music-results"><p class="music-empty">Loading full tracks…</p></div></section>${musicPlayerMarkup()}</div></section>`);
+}
+
+function musicPlayerMarkup() {
+  return `<aside class="feature-card music-player"><span class="section-kicker">NOW PLAYING</span><img id="music-art" alt="" hidden><h2 id="music-now">Choose a song</h2><p id="music-playback-note">Full tracks play here when available.</p><audio id="music-audio" controls preload="none"></audio><div class="player-actions"><button type="button" id="music-prev" aria-label="Previous song">← Previous</button><button type="button" id="music-next" aria-label="Next song">Next →</button></div><a id="music-open" class="music-open" href="#" target="_blank" rel="noopener noreferrer" hidden>Open artist page ↗</a></aside>`;
+}
+
+function musicAlbumPage(path) {
+  const [, , , source, id] = path.split('/');
+  return page('Album', `<section class="feature-page music-page" id="music-album" data-source="${source}" data-id="${id}"><div class="feature-head"><span class="section-kicker">MUSIC / ALBUM</span><a class="music-back" href="/music">← Back to Music</a></div><div id="music-album-hero" class="music-album-hero"><h1>Loading album…</h1></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Album tracks</h2><span id="music-source-note"></span></div><div id="music-results"><p class="music-empty">Loading tracks…</p></div></section>${musicPlayerMarkup()}</div></section>`);
+}
+
+function audiusTrack(track, collectionName = '') {
+  const albumId = track.album_backlink?.playlist_id || '';
+  return {
+    kind: 'song', source: 'audius', full: true, id: track.id,
+    trackName: track.title || '', artistName: track.user?.name || track.artist || '',
+    collectionName: collectionName || track.album_backlink?.playlist_name || '',
+    albumId: String(albumId), artworkUrl100: track.artwork?.['480x480'] || track.artwork?.['150x150'] || '',
+    previewUrl: `/music-stream?id=${encodeURIComponent(track.id || '')}`,
+    trackViewUrl: track.permalink ? `https://audius.co${track.permalink}` : '',
+    duration: Number(track.duration) || 0
+  };
+}
+
+function deezerTrack(track, collectionName = '', albumId = '') {
+  return {
+    kind: 'song', source: 'deezer', full: false, id: String(track.id || ''),
+    trackName: track.title || '', artistName: track.artist?.name || '',
+    collectionName: collectionName || track.album?.title || '',
+    albumId: String(albumId || track.album?.id || ''),
+    artworkUrl100: track.album?.cover_medium || '',
+    previewUrl: track.preview || '', trackViewUrl: track.link || '',
+    duration: Number(track.duration) || 0
+  };
+}
+
+function musicJson(value, status = 200) {
+  return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': status === 200 ? 'public, max-age=120' : 'no-store' } });
 }
 
 async function musicApi(url) {
   const query = String(url.searchParams.get('q') || '').trim().slice(0, 100);
-  if (!query) return new Response(JSON.stringify({ resultCount: 0, results: [] }), { headers: { 'Content-Type': 'application/json' } });
+  const sourceName = url.searchParams.get('source') === 'deezer' ? 'deezer' : 'audius';
+  if (!query) return musicJson({ resultCount: 0, results: [] });
   try {
-    const source = new URL('https://api.deezer.com/search');
-    source.searchParams.set('q', query);
-    source.searchParams.set('limit', '35');
+    const source = new URL(sourceName === 'audius' ? 'https://api.audius.co/v1/tracks/search' : 'https://api.deezer.com/search');
+    source.searchParams.set(sourceName === 'audius' ? 'query' : 'q', query);
+    if (sourceName === 'audius') source.searchParams.set('app_name', 'ItsRecoil');
+    else source.searchParams.set('limit', '35');
     const upstream = await fetch(source, { headers: { Accept: 'application/json' } });
     if (!upstream.ok) throw new Error('Music API unavailable');
     const data = await upstream.json();
     if (!Array.isArray(data.data)) throw new Error('Invalid music response');
-    const results = data.data.map(track => ({
-      kind: 'song', trackName: track.title, artistName: track.artist?.name,
-      collectionName: track.album?.title, artworkUrl100: track.album?.cover_medium,
-      previewUrl: track.preview, trackViewUrl: track.link
-    }));
-    return new Response(JSON.stringify({ resultCount: results.length, results }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=120', 'Access-Control-Allow-Origin': '*' } });
+    const results = sourceName === 'audius' ? data.data.filter(track => track.is_streamable !== false && track.access?.stream !== false).map(track => audiusTrack(track)) : data.data.map(track => deezerTrack(track));
+    return musicJson({ resultCount: results.length, results, source: sourceName });
   } catch {
-    return new Response(JSON.stringify({ error: 'Music search is unavailable' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+    return musicJson({ error: 'Music search is unavailable' }, 502);
   }
 }
 
+async function musicAlbumApi(url) {
+  const sourceName = url.searchParams.get('source') === 'deezer' ? 'deezer' : 'audius';
+  const id = String(url.searchParams.get('id') || '');
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) return musicJson({ error: 'Invalid album' }, 400);
+  try {
+    const source = new URL(sourceName === 'audius' ? `https://api.audius.co/v1/playlists/${id}` : `https://api.deezer.com/album/${id}`);
+    if (sourceName === 'audius') source.searchParams.set('app_name', 'ItsRecoil');
+    const upstream = await fetch(source, { headers: { Accept: 'application/json' } });
+    if (!upstream.ok) throw new Error('Album unavailable');
+    const raw = await upstream.json();
+    const album = sourceName === 'audius' ? (Array.isArray(raw.data) ? raw.data[0] : raw.data) : raw;
+    if (!album || !Array.isArray(sourceName === 'audius' ? album.tracks : album.tracks?.data)) throw new Error('Invalid album');
+    const results = sourceName === 'audius' ? album.tracks.map(track => audiusTrack(track, album.playlist_name)) : album.tracks.data.map(track => deezerTrack({ ...track, album: { id, title: album.title, cover_medium: album.cover_medium } }, album.title, id));
+    return musicJson({ title: sourceName === 'audius' ? album.playlist_name : album.title, artist: sourceName === 'audius' ? album.user?.name : album.artist?.name, artwork: sourceName === 'audius' ? album.artwork?.['480x480'] : album.cover_medium, trackCount: results.length, source: sourceName, link: sourceName === 'audius' ? (album.permalink ? `https://audius.co${album.permalink}` : '') : album.link, results });
+  } catch { return musicJson({ error: 'Album unavailable' }, 502); }
+}
+
+async function musicStream(request, url) {
+  const id = String(url.searchParams.get('id') || '');
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) return new Response('Invalid track', { status: 400 });
+  const source = `https://api.audius.co/v1/tracks/${encodeURIComponent(id)}/stream?app_name=ItsRecoil`;
+  try {
+    const headers = new Headers({ Accept: 'audio/mpeg' });
+    const range = request.headers.get('Range');
+    if (range && /^bytes=\d*-\d*$/.test(range)) headers.set('Range', range);
+    const upstream = await fetch(source, { headers, redirect: 'follow' });
+    if (!upstream.ok || !upstream.body) return new Response('Track unavailable', { status: 502 });
+    const outputHeaders = new Headers({ 'Content-Type': upstream.headers.get('Content-Type') || 'audio/mpeg', 'Cache-Control': 'private, max-age=300', 'Accept-Ranges': 'bytes', 'X-Content-Type-Options': 'nosniff' });
+    for (const name of ['Content-Length', 'Content-Range']) if (upstream.headers.has(name)) outputHeaders.set(name, upstream.headers.get(name));
+    return new Response(upstream.body, { status: upstream.status, headers: outputHeaders });
+  } catch { return new Response('Track unavailable', { status: 502 }); }
+}
+
 function minecraftPage() {
-  const response = page('Minecraft', `<section class="feature-page game-page"><div class="feature-head"><span class="section-kicker">MINECRAFT</span><h1>Eaglercraft launcher</h1><p>Load the Eaglercraft HTML file you provided. The game runs locally in your browser; the site does not upload the file.</p></div><section class="feature-card game-launcher"><div><h2>Launch Minecraft</h2><p id="minecraft-message">Select the supplied Eaglercraft HTML file.</p><div class="game-controls"><label class="file-button" for="minecraft-file">Choose HTML file</label><input id="minecraft-file" type="file" accept=".html,text/html"><button id="minecraft-launch" type="button" disabled>Launch game →</button><button id="minecraft-fullscreen" type="button">Fullscreen</button></div></div></section><iframe id="minecraft-frame" title="Eaglercraft" allow="fullscreen; gamepad; clipboard-read; clipboard-write" hidden></iframe></section>`);
-  response.headers.set('Content-Security-Policy', "default-src 'self' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https:; style-src 'self' 'unsafe-inline' blob: data: https:; img-src 'self' blob: data: https:; media-src 'self' blob: data: https:; connect-src 'self' blob: data: https: wss:; frame-src blob:; worker-src blob:; form-action 'self'; base-uri 'none'");
+  const response = page('Minecraft', `<section class="feature-page game-page"><div class="feature-head"><span class="section-kicker">MINECRAFT</span><h1>ItsRecoil Minecraft</h1><p>Launch Eaglercraft 26.2 right here. The game may take a moment to download on its first launch.</p></div><section class="feature-card game-launcher"><div><h2>Ready to play</h2><p id="minecraft-message">Click Launch game to start.</p><div class="game-controls"><button id="minecraft-launch" type="button">Launch game →</button><button id="minecraft-fullscreen" type="button">Fullscreen</button></div></div></section><iframe id="minecraft-frame" title="ItsRecoil Minecraft" allow="fullscreen; gamepad; pointer-lock" sandbox="allow-scripts allow-pointer-lock allow-downloads allow-forms" hidden></iframe></section>`);
+  response.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy').replace("frame-src 'self' blob:", "frame-src 'self' blob:"));
   return response;
+}
+
+async function minecraftClient() {
+  const source = 'https://raw.githubusercontent.com/3lit3-Pl4y3r/eaglercraft-26.2/a64bac629f9c0145015751f90f2ee2641951d0f1/index.html';
+  try {
+    const upstream = await fetch(source);
+    if (!upstream.ok || !upstream.body) throw new Error('Game unavailable');
+    return new Response(upstream.body, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=86400', 'Content-Security-Policy': "default-src 'self' blob: data: https: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https:; style-src 'self' 'unsafe-inline' blob: data: https:; img-src 'self' blob: data: https:; media-src 'self' blob: data: https:; connect-src 'self' blob: data: https: wss:; frame-src blob:; worker-src blob:; form-action 'self'; base-uri 'none'; frame-ancestors 'self'", 'X-Content-Type-Options': 'nosniff' } });
+  } catch { return new Response('Minecraft is unavailable right now.', { status: 502 }); }
 }
 
 async function linkPage(user, env, formToken, origin) {
