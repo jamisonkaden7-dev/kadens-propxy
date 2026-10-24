@@ -1120,7 +1120,7 @@ export default {
       upstreamInit.duplex = 'half';
     }
 
-    const upstreamHref = stripProxyFromQuery(parsedTarget, proxyOrigin);
+    const upstreamHref = stripProxyFromQuery(parsedTarget, proxyOrigin, request);
 
     let upstream;
     try {
@@ -1268,21 +1268,48 @@ function proxify(absoluteUrl, proxyOrigin) {
   return proxyOrigin + '/' + absoluteUrl;
 }
 
-// Page JS sometimes puts its own location.href into a query parameter
-// (consent managers do: href=<relay>/https://www.bbc.com/news). The upstream
-// server validates that against its registered domains and rejects the
-// relay-wrapped form (400), so unwrap it back to the real URL before
-// forwarding. Query string only; everything else is untouched.
-function stripProxyFromQuery(parsed, proxyOrigin) {
+// A site can put its callback URL inside another URL's query string. Keep
+// those URLs absolute when translating the relay origin back to the site:
+// stripping the relay prefix as text left /auth/callback without an origin.
+export function stripProxyFromQuery(parsed, proxyOrigin, request) {
   if (!parsed.search) return parsed.href;
-  const encoded = encodeURIComponent(proxyOrigin + '/');
-  const encodedLower = encoded.replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase());
-  let search = parsed.search.split(encoded).join('').split(encodedLower).join('');
-  search = search.split(proxyOrigin + '/').join('');
-  if (search === parsed.search) return parsed.href;
-  const u = new URL(parsed.href);
-  u.search = search;
-  return u.href;
+  let siteOrigin = parsed.origin;
+  try {
+    const referer = recoverRealUrl(request?.headers?.get('Referer'), proxyOrigin);
+    if (referer) siteOrigin = new URL(referer).origin;
+    else {
+      const cookie = (request?.headers?.get('Cookie') || '').split(';').map(x => x.trim()).find(x => x.startsWith('__Host-kp_target='));
+      if (cookie) siteOrigin = new URL(decodeURIComponent(cookie.slice('__Host-kp_target='.length))).origin;
+    }
+  } catch { /* use the requested site as a fallback */ }
+
+  function translate(value, depth = 0) {
+    if (depth > 4 || value.length > 8000) return value;
+    let output = value;
+    let changed = false;
+    if (output.startsWith(proxyOrigin + '/')) {
+      const rest = output.slice(proxyOrigin.length + 1);
+      output = /^https?:\/\//i.test(rest) ? rest : new URL(rest, siteOrigin + '/').href;
+      changed = true;
+    }
+    let nested;
+    try { nested = new URL(output); }
+    catch { return output; }
+    if (nested.protocol !== 'http:' && nested.protocol !== 'https:') return output;
+    for (const [key, inner] of nested.searchParams) {
+      const fixed = translate(inner, depth + 1);
+      if (fixed !== inner) { nested.searchParams.set(key, fixed); changed = true; }
+    }
+    return changed ? nested.href : output;
+  }
+
+  const url = new URL(parsed.href);
+  let changed = false;
+  for (const [key, value] of url.searchParams) {
+    const fixed = translate(value);
+    if (fixed !== value) { url.searchParams.set(key, fixed); changed = true; }
+  }
+  return changed ? url.href : parsed.href;
 }
 
 // Headers we set ourselves, that leak the proxy's own domain if forwarded
@@ -1926,7 +1953,7 @@ class ScriptInjector {
         if (document.getElementById('__relay_home')) return;
         var home = document.createElement('a');
         home.id = '__relay_home';
-        relayNativeSetAttr.call(home, 'href', proxyOrigin + '/');
+        relayNativeSetAttr.call(home, 'href', proxyOrigin + '/__kaden_home');
         home.setAttribute('aria-label', 'Home — isRecool');
         home.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;' +
           'display:inline-flex;align-items:center;gap:6px;min-height:27px;padding:4px 9px;' +

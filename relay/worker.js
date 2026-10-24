@@ -19,7 +19,11 @@ export default {
 
     const session = await readSession(request, env.RELAY_SECRET);
     if (!session || (env.GOOGLE_REQUIRED === 'true' && session.kind !== 'google')) return Response.redirect(env.APP_URL, 302);
-    if (url.pathname === '/') return Response.redirect(env.APP_URL, 302);
+    if (url.pathname === '/__kaden_home') return Response.redirect(env.APP_URL, 302);
+    if (url.pathname === '/') {
+      const source = sourceFromReferer(request, url.origin) || sourceFromCookie(request);
+      return Response.redirect(source ? `${url.origin}/${source}/${url.search}` : env.APP_URL, 302);
+    }
 
     if (isGoogleFallbackPath(url.pathname)) return googleFallback(env.APP_URL);
 

@@ -5,6 +5,17 @@ import { readFileSync } from 'node:fs';
 import { claimKey, claimGoogleKey, hashKey, hasAccess, hasGoogleAccess, linkGoogleKey, normalizeTarget, resolveDestination } from '../src/core.js';
 import worker from '../src/worker.js';
 import relayWorker from '../relay/worker.js';
+import { stripProxyFromQuery } from '../relay/upstream.js';
+
+test('nested site callbacks stay absolute when the relay origin is removed', () => {
+  const relayOrigin = 'https://relay.example.workers.dev';
+  const returnTo = `${relayOrigin}/auth/callback?dest=${encodeURIComponent(`${relayOrigin}/https://poki.com/en/g/game`)}`;
+  const target = new URL(`https://poki-auth.poki.com/self-service/registration/browser?return_to=${encodeURIComponent(returnTo)}`);
+  const request = new Request(`${relayOrigin}/https://poki-auth.poki.com/`, { headers: { Referer: `${relayOrigin}/https://poki.com/en/g/game` } });
+  const result = new URL(stripProxyFromQuery(target, relayOrigin, request));
+  const callback = new URL(result.searchParams.get('return_to'));
+  assert.equal(callback.href, 'https://poki.com/auth/callback?dest=https%3A%2F%2Fpoki.com%2Fen%2Fg%2Fgame');
+});
 
 const googleSub = '123456789012345678901';
 
@@ -125,6 +136,7 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const login = await worker.fetch(new Request(`${origin}/login`), env);
     assert.equal(login.status, 200);
     assert.match(await login.text(), /Enter your key/);
+    assert.match(login.headers.get('Content-Security-Policy'), /script-src 'self'/);
     const signedOutBrowse = await worker.fetch(new Request(`${origin}/browse?url=google`), env);
     assert.equal(signedOutBrowse.status, 302);
     assert.equal(signedOutBrowse.headers.get('location'), `${origin}/login`);
@@ -151,7 +163,7 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter an address/);
-    assert.match(appHtml, /src="\/ui\.js"/);
+    assert.match(appHtml, /src="\/ui\.js\?v=boot2"/);
     assert.match(after.headers.get('Content-Security-Policy'), /form-action https:/);
     assert.match(after.headers.get('Content-Security-Policy'), /connect-src https:\/\/kadens-propxy-relay\.example\.workers\.dev/);
     assert.equal(after.headers.get('Link'), '<https://kadens-propxy-relay.example.workers.dev>; rel=preconnect');
@@ -197,6 +209,12 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     }), relayEnv, {});
     assert.equal(rootRelative.status, 302);
     assert.equal(rootRelative.headers.get('location'), `${relayOrigin}/https://duckduckgo.com/results?search_query=test`);
+    const youtubeHome = await relayWorker.fetch(new Request(`${relayOrigin}/`, {
+      headers: { Cookie: `${relayCookie}; __Host-kp_target=${encodeURIComponent('https://www.youtube.com')}` }
+    }), relayEnv, {});
+    assert.equal(youtubeHome.headers.get('location'), `${relayOrigin}/https://www.youtube.com/`);
+    const appHome = await relayWorker.fetch(new Request(`${relayOrigin}/__kaden_home`, { headers: { Cookie: relayCookie } }), relayEnv, {});
+    assert.equal(appHome.headers.get('location'), `${origin}/app`);
     const youtubePost = await relayWorker.fetch(new Request(`${relayOrigin}/youtubei/v1/guide?prettyPrint=false`, {
       method: 'POST',
       headers: { Cookie: `${relayCookie}; __Host-kp_target=${encodeURIComponent('https://www.youtube.com')}`, 'Content-Type': 'application/json' },
