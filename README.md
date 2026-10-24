@@ -44,7 +44,7 @@ Run `node --test` to check account binding, legacy claim linking, address parsin
 
 ## Visual and browser behavior
 
-The loading screen lasts 2.5 seconds on the first visit in a tab, reveals eight short steps, spins the Star of David, and can be skipped with Enter, Escape, or Skip. The page and app use a compact black/white/grey layout with a faint star pattern. Reduced-motion users skip the animation.
+The loading screen displays only centered isRecool text for about three seconds, with a keyboard skip and reduced-motion support. The app and launch page use frosted monochrome panels and controls.
 
 The relay rewrites links, scripts, and asset URLs and caches shared public content. It also remembers the active site's origin to repair root-relative navigations when a site's referrer is missing. Google challenge and invalid Google results pages redirect to isRecool's search screen. YouTube's home and search HTML load through the relay, but video playback or dynamic interactions may still fail. Other sites, particularly video services, logins, CAPTCHAs, and heavily protected apps, can also fail. [Aetheris](https://github.com/mynamescrax/aetheris) uses Scramjet with libcurl/epoxy and states that it needs a VPS; its backend cannot run as a drop-in Cloudflare Worker or GitHub Pages site.
 
