@@ -385,11 +385,11 @@ const featureJs = `(()=>{
       list.innerHTML=songs.length?songs.map((s,i)=>{
         const album=s.albumId?'<a class="track-album" href="/music/album/'+esc(s.source)+'/'+encodeURIComponent(s.albumId)+'">'+esc(s.collectionName||'View album')+'</a>':esc(s.collectionName||'');
         const link=safeLink(s.trackViewUrl);
-        return '<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div class="track-info"><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+album+'</span></div><span class="track-duration">'+duration(s.duration)+'</span><button type="button" data-play="'+i+'" aria-label="Play '+esc(s.trackName)+'">▶</button>'+(link?'<a class="track-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on '+(s.source==='audius'?'Audius':'Deezer')+'">Open ↗</a>':'')+'</article>';
+        return '<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div class="track-info"><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+album+'</span></div><span class="track-duration">'+duration(s.duration)+'</span><button type="button" data-play="'+i+'" aria-label="'+(s.previewUrl?'Play ':'Preview unavailable for ')+esc(s.trackName)+'"'+(s.previewUrl?'':' disabled')+'>'+ (s.previewUrl?'▶':'—') +'</button>'+(link?'<a class="track-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on '+(s.source==='audius'?'Audius':'Deezer')+'">Open ↗</a>':'')+'</article>';
       }).join(''):'<p class="music-empty">No playable tracks found. Try another search.</p>';
     }
     function play(i){
-      if(!songs[i])return;
+      if(!songs[i]?.previewUrl)return;
       index=i;const s=songs[i];
       audio.src=s.previewUrl||'';audio.play().catch(()=>{note.textContent='Playback is unavailable for this track. Open it on '+(s.source==='audius'?'Audius':'Deezer')+'.'});
       now.textContent=s.trackName+' — '+s.artistName;
@@ -420,7 +420,7 @@ const featureJs = `(()=>{
     if(albumView){
       source=albumView.dataset.source;
       fetch('/music-album-api?source='+source+'&id='+encodeURIComponent(albumView.dataset.id)).then(res=>{if(!res.ok)throw Error('Album unavailable');return res.json()}).then(data=>{
-        songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);render();
+        songs=(data.results||[]).filter(s=>s.kind==='song');render();
         sourceNote.textContent=source==='audius'?'Full tracks via Audius':'Complete track list · Deezer previews';
         const hero=document.getElementById('music-album-hero');
         const link=safeLink(data.link);
@@ -1042,7 +1042,22 @@ async function musicAlbumApi(url) {
     const raw = await upstream.json();
     const album = sourceName === 'audius' ? (Array.isArray(raw.data) ? raw.data[0] : raw.data) : raw;
     if (!album || !Array.isArray(sourceName === 'audius' ? album.tracks : album.tracks?.data)) throw new Error('Invalid album');
-    const results = sourceName === 'audius' ? album.tracks.map(track => audiusTrack(track, album.playlist_name)) : album.tracks.data.map(track => deezerTrack({ ...track, album: { id, title: album.title, cover_medium: album.cover_medium } }, album.title, id));
+    let tracks = sourceName === 'audius' ? album.tracks : album.tracks.data;
+    if (sourceName === 'deezer') {
+      let next = album.tracks.next;
+      for (let page = 0; next && page < 20; page++) {
+        const moreUrl = new URL(next);
+        if (moreUrl.origin !== 'https://api.deezer.com' || moreUrl.pathname !== `/album/${id}/tracks`) throw new Error('Invalid album pagination');
+        const more = await fetch(moreUrl, { headers: { Accept: 'application/json' } });
+        if (!more.ok) throw new Error('Album pagination unavailable');
+        const result = await more.json();
+        if (!Array.isArray(result.data)) throw new Error('Invalid album pagination');
+        tracks = tracks.concat(result.data);
+        next = result.next;
+      }
+      if (next) throw new Error('Album too large');
+    }
+    const results = sourceName === 'audius' ? tracks.map(track => audiusTrack(track, album.playlist_name)) : tracks.map(track => deezerTrack({ ...track, album: { id, title: album.title, cover_medium: album.cover_medium } }, album.title, id));
     return musicJson({ title: sourceName === 'audius' ? album.playlist_name : album.title, artist: sourceName === 'audius' ? album.user?.name : album.artist?.name, artwork: sourceName === 'audius' ? album.artwork?.['480x480'] : album.cover_medium, trackCount: results.length, source: sourceName, link: sourceName === 'audius' ? (album.permalink ? `https://audius.co${album.permalink}` : '') : album.link, results });
   } catch { return musicJson({ error: 'Album unavailable' }, 502); }
 }
