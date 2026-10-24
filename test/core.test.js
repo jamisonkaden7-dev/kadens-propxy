@@ -111,7 +111,7 @@ test('address input accepts domains and searches but rejects private targets', (
 
 test('GitHub Pages asks for a key before offering browsing', () => {
   const html = readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8');
-  assert.match(html, /<form class="search" action="https:\/\/kadens-propxy\.jamisonkaden7\.workers\.dev\/access" method="post">/);
+  assert.match(html, /<form class="search key-search" action="https:\/\/kadens-propxy\.jamisonkaden7\.workers\.dev\/access" method="post">/);
   assert.match(html, /name="key" type="password"/);
   assert.doesNotMatch(html, /name="url"/);
 });
@@ -163,7 +163,10 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter an address/);
-    assert.match(appHtml, /src="\/ui\.js\?v=boot3"/);
+    assert.match(appHtml, /src="\/ui\.js\?v=boot4"/);
+    const account = await worker.fetch(new Request(`${origin}/account`, { headers: { Cookie: sessionCookie } }), env);
+    assert.equal(account.status, 200);
+    assert.match(await account.text(), /owner@example\.com/);
     assert.match(after.headers.get('Content-Security-Policy'), /form-action https:/);
     assert.match(after.headers.get('Content-Security-Policy'), /connect-src https:\/\/kadens-propxy-relay\.example\.workers\.dev/);
     assert.equal(after.headers.get('Link'), '<https://kadens-propxy-relay.example.workers.dev>; rel=preconnect');
