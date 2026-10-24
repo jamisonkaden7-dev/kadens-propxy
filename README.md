@@ -1,6 +1,6 @@
 # isRecool
 
-A monochrome GitHub Pages launch page, Google-bound one-time keys, and a separate Cloudflare Worker relay for opening public websites.
+A nature-backed glass GitHub Pages launch page, Google-bound one-time keys, and a separate Cloudflare Worker relay for opening public websites.
 
 ## Live addresses
 
