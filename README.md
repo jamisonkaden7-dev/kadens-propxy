@@ -12,7 +12,7 @@ The old deployment names remain in the URLs so existing links keep working. The 
 
 ## Account and key flow
 
-1. GitHub Pages opens on a key form, with no address field before authentication. Enter one of the two invite keys. The Worker checks its hash before showing Google sign-in and holds the selected key in a signed, short-lived cookie.
+1. GitHub Pages opens on a key form, with no address field before authentication. Enter an issued invite key. The Worker checks its hash before showing Google sign-in and holds the selected key in a signed, short-lived cookie.
 2. Sign in with Google. The Worker verifies Google's signed ID token and binds a new key to Google's stable `sub` account ID, not the changeable email address. A previously claimed key only works with that same Google account. Browser sessions are tied to the verified key; sessions issued before this gate are rejected.
 3. Enter a complete URL, a bare domain such as `example.com`, or a search phrase. The word `youtube` and YouTube URLs open through the isRecool relay as a full-page navigation. The word `google` and Google URLs open an isRecool search screen because Google blocks this relay. Other unknown words search DuckDuckGo. Relayed addresses get a single-use, 90-second launch ticket.
 5. The relay checks the ticket and owner, then grants a signed six-hour cookie on its own host. Proxied page scripts cannot read the sign-in app's session.
@@ -28,7 +28,7 @@ Create a Google Auth Platform **Web application** client. Add:
 - Authorized JavaScript origin: `https://kadens-propxy.jamisonkaden7.workers.dev`
 - Authorized redirect URI: `https://kadens-propxy.jamisonkaden7.workers.dev/oauth/google/callback`
 
-The browser uses Google Identity Services in redirect mode. Its ID token is posted to the Worker, which checks Google's JWT signature, client ID, issuer, expiry, verified email flag, and double-submit CSRF token. Only the public client ID is needed in `wrangler.toml` as `GOOGLE_CLIENT_ID`; the client secret is not used. If Google's consent screen is in testing mode, add the two intended Google accounts as test users. Use a standard browser for Google sign-in; embedded browsers may be rejected by Google.
+The browser uses Google Identity Services in redirect mode. Its ID token is posted to the Worker, which checks Google's JWT signature, client ID, issuer, expiry, verified email flag, and double-submit CSRF token. Only the public client ID is needed in `wrangler.toml` as `GOOGLE_CLIENT_ID`; the client secret is not used. If Google's consent screen is in testing mode, add each intended Google account as a test user. Use a standard browser for Google sign-in; embedded browsers may be rejected by Google.
 
 ## Deploy or update
 

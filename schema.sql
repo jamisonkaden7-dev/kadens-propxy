@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS google_relay_tickets (
 CREATE INDEX IF NOT EXISTS google_relay_tickets_expiry_idx
   ON google_relay_tickets (expires_at);
 
--- Only these two hashes are accepted. Keep the original keys out of the public repo.
+-- Seed the original hashes. Additional issued keys live in D1; keep raw keys out of the public repo.
 INSERT OR IGNORE INTO access_keys (key_hash) VALUES
   ('16516088a4b7ab31481b299c52b48258e6cdc703e4bd22608cf79317315ed1ac'),
   ('589fdefa83600c539ceb17a0b5c8b8cd34fe64f3e7f4732c640f2174c797bfe9');
