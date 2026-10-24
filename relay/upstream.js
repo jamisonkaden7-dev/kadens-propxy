@@ -1957,9 +1957,9 @@ class ScriptInjector {
         home.setAttribute('aria-label', 'Home — isRecool');
         home.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;' +
           'display:inline-flex;align-items:center;gap:6px;min-height:27px;padding:4px 9px;' +
-          'background:#303030;border:1px solid #777;border-radius:9px;' +
+          'background:linear-gradient(145deg,#ffffff48,#ffffff1c),#6668;border:1px solid #ffffff9c;border-radius:12px;' +
           'color:#ececec;font:500 11px/1 Arial,Helvetica,sans-serif;text-decoration:none;' +
-          'box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer;touch-action:manipulation;';
+          'box-shadow:inset 0 1px #ffffff9c,0 6px 20px #0005;backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);cursor:pointer;touch-action:manipulation;';
         home.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
           'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
           '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span>';
@@ -1974,18 +1974,18 @@ class ScriptInjector {
         toggle.id = '__relay_debug_toggle';
         toggle.type = 'button';
         toggle.style.cssText = 'position:fixed;top:10px;right:97px;z-index:2147483647;' +
-          'background:#303030;border:1px solid #777;border-radius:9px;padding:6px 9px;' +
+          'background:linear-gradient(145deg,#ffffff48,#ffffff1c),#6668;border:1px solid #ffffff9c;border-radius:12px;padding:6px 9px;' +
           'color:#ececec;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:.02em;' +
-          'cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.35);line-height:1;' +
+          'cursor:pointer;box-shadow:inset 0 1px #ffffff9c,0 6px 20px #0005;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);line-height:1;' +
           'touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
         toggle.textContent = 'relay';
 
         var panel = document.createElement('div');
         panel.id = '__relay_debug_panel';
         panel.style.cssText = 'position:fixed;top:42px;right:10px;z-index:2147483647;' +
-          'background:#212121;border:1px solid #4b4b4b;border-radius:9px;width:340px;' +
+          'background:linear-gradient(145deg,#ffffff42,#ffffff14),#383838c9;border:1px solid #ffffff8a;border-radius:16px;width:340px;' +
           'max-width:calc(100vw - 20px);max-height:60vh;overflow:auto;display:none;' +
-          'box-shadow:0 4px 16px rgba(0,0,0,.4);' +
+          'box-shadow:inset 0 1px #ffffff7a,0 18px 46px #0008;backdrop-filter:blur(26px) saturate(140%);-webkit-backdrop-filter:blur(26px) saturate(140%);' +
           'font-family:ui-monospace,monospace;font-size:11px;';
         panel.innerHTML =
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;' +
