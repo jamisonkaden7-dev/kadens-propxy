@@ -30,65 +30,83 @@ export const featureJs = `(()=>{
   if(cursor){cursor.checked=!!prefs.cursor;cursor.addEventListener('change',()=>{prefs.cursor=cursor.checked;save();apply()})}
 
   const musicForm=document.getElementById('music-search');
-  if(musicForm){
+  const albumView=document.getElementById('music-album');
+  if(musicForm||albumView){
     const list=document.getElementById('music-results');
     const audio=document.getElementById('music-audio');
     const now=document.getElementById('music-now');
     const art=document.getElementById('music-art');
     const next=document.getElementById('music-next');
     const prev=document.getElementById('music-prev');
-    let songs=[],index=-1;
+    const note=document.getElementById('music-playback-note');
+    const open=document.getElementById('music-open');
+    const sourceNote=document.getElementById('music-source-note');
+    let songs=[],index=-1,source='audius';
     const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const duration=seconds=>seconds?Math.floor(seconds/60)+':'+String(Math.floor(seconds%60)).padStart(2,'0'):'';
+    const safeLink=value=>{try{const url=new URL(value);return url.protocol==='https:'?url.href:''}catch{return ''}};
+    function render(){
+      list.innerHTML=songs.length?songs.map((s,i)=>{
+        const album=s.albumId?'<a class="track-album" href="/music/album/'+esc(s.source)+'/'+encodeURIComponent(s.albumId)+'">'+esc(s.collectionName||'View album')+'</a>':esc(s.collectionName||'');
+        const link=safeLink(s.trackViewUrl);
+        return '<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div class="track-info"><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+album+'</span></div><span class="track-duration">'+duration(s.duration)+'</span><button type="button" data-play="'+i+'" aria-label="Play '+esc(s.trackName)+'">▶</button>'+(link?'<a class="track-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on '+(s.source==='audius'?'Audius':'Deezer')+'">Open ↗</a>':'')+'</article>';
+      }).join(''):'<p class="music-empty">No playable tracks found. Try another search.</p>';
+    }
     function play(i){
       if(!songs[i])return;
       index=i;const s=songs[i];
-      audio.src=s.previewUrl||'';audio.play().catch(()=>{});
+      audio.src=s.previewUrl||'';audio.play().catch(()=>{note.textContent='Playback is unavailable for this track. Open it on '+(s.source==='audius'?'Audius':'Deezer')+'.'});
       now.textContent=s.trackName+' — '+s.artistName;
       art.src=s.artworkUrl100||'';art.hidden=!s.artworkUrl100;
+      note.textContent=s.full?'Full track · Audius':'30-second preview · Deezer';
+      const link=safeLink(s.trackViewUrl);open.href=link||'#';open.hidden=!link;open.textContent='Open on '+(s.source==='audius'?'Audius':'Deezer')+' ↗';
       list.querySelectorAll('[data-play]').forEach((button,n)=>button.setAttribute('aria-label',(n===i?'Playing ':'Play ')+songs[n].trackName));
     }
     async function search(query){
+      if(!query)return;
       list.innerHTML='<p class="music-empty">Searching…</p>';
       try{
-        const res=await fetch('/music-api?q='+encodeURIComponent(query));
+        const res=await fetch('/music-api?q='+encodeURIComponent(query)+'&source='+source);
         if(!res.ok)throw Error('Search unavailable');
-        const data=await res.json();songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);
-        list.innerHTML=songs.length?songs.map((s,i)=>'<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+esc(s.collectionName||'')+'</span></div><button type="button" data-play="'+i+'" aria-label="Play '+esc(s.trackName)+'">▶</button><a href="'+esc(s.trackViewUrl||'#')+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on Deezer">Open ↗</a></article>').join(''):'<p class="music-empty">No playable previews found. Try another search.</p>';
+        const data=await res.json();songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);index=-1;render();
       }catch{list.innerHTML='<p class="music-empty">Search is unavailable right now. Please try again.</p>'}
     }
-    musicForm.addEventListener('submit',e=>{e.preventDefault();search(musicForm.querySelector('input').value.trim())});
+    if(musicForm){
+      musicForm.addEventListener('submit',e=>{e.preventDefault();search(musicForm.querySelector('input').value.trim())});
+      document.querySelectorAll('[data-music-source]').forEach(button=>button.addEventListener('click',()=>{
+        source=button.dataset.musicSource;document.querySelectorAll('[data-music-source]').forEach(b=>b.classList.toggle('is-active',b===button));
+        sourceNote.textContent=source==='audius'?'Full tracks via Audius':'30-second previews via Deezer';
+        search(musicForm.querySelector('input').value.trim()||'jazz');
+      }));
+      document.querySelectorAll('[data-music-query]').forEach(b=>b.addEventListener('click',()=>{musicForm.querySelector('input').value=b.dataset.musicQuery;search(b.dataset.musicQuery)}));
+      musicForm.querySelector('input').value='jazz';search('jazz');
+    }
+    if(albumView){
+      source=albumView.dataset.source;
+      fetch('/music-album-api?source='+source+'&id='+encodeURIComponent(albumView.dataset.id)).then(res=>{if(!res.ok)throw Error('Album unavailable');return res.json()}).then(data=>{
+        songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);render();
+        sourceNote.textContent=source==='audius'?'Full tracks via Audius':'Complete track list · Deezer previews';
+        const hero=document.getElementById('music-album-hero');
+        const link=safeLink(data.link);
+        hero.innerHTML=(data.artwork?'<img alt="" src="'+esc(data.artwork)+'">':'')+'<div><span class="section-kicker">'+(source==='audius'?'FULL ALBUM':'ALBUM')+'</span><h1>'+esc(data.title)+'</h1><p>'+esc(data.artist||'')+' · '+data.trackCount+' tracks</p>'+(link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Open on '+(source==='audius'?'Audius':'Deezer')+' ↗</a>':'')+'</div>';
+      }).catch(()=>{document.getElementById('music-album-hero').innerHTML='<h1>Album unavailable.</h1>';list.innerHTML='<p class="music-empty">Please try another album.</p>'});
+    }
     list.addEventListener('click',e=>{const button=e.target.closest('[data-play]');if(button)play(Number(button.dataset.play))});
     next.addEventListener('click',()=>play(index+1));prev.addEventListener('click',()=>play(index-1));
     audio.addEventListener('ended',()=>play(index+1));
-    document.querySelectorAll('[data-music-query]').forEach(b=>b.addEventListener('click',()=>{musicForm.querySelector('input').value=b.dataset.musicQuery;search(b.dataset.musicQuery)}));
   }
 
-  const gameFile=document.getElementById('minecraft-file');
-  if(gameFile){
+  const gameLaunch=document.getElementById('minecraft-launch');
+  if(gameLaunch){
     const frame=document.getElementById('minecraft-frame');
-    const launch=document.getElementById('minecraft-launch');
     const message=document.getElementById('minecraft-message');
     const full=document.getElementById('minecraft-fullscreen');
-    let gameUrl=null;
-    gameFile.addEventListener('change',()=>{const file=gameFile.files?.[0];launch.disabled=!file;message.textContent=file?file.name+' ready to launch.':'Select the supplied Eaglercraft HTML file.'});
-    launch.addEventListener('click',async()=>{
-      const file=gameFile.files?.[0];if(!file)return;
-      launch.disabled=true;message.textContent='Preparing ItsRecoil Minecraft…';
-      try{
-        const cut=Math.max(0,file.size-200000);
-        let tail=await file.slice(cut).text();
-        tail=tail.replace('<title>Eaglercraft 26.2 (zeus/master)</title>','<title>ItsRecoil Minecraft</title>')
-          .replace('Loading Eaglercraft 26.2 runtime…','Loading ItsRecoil Minecraft…')
-          .replace('</head>','<style>#loading_screen{background:#090909!important;color:#f2f2f2!important}#loading_screen img{display:none!important}#boot_status{font-family:Arial,Helvetica,sans-serif!important;color:#eee!important;font-size:18px!important;letter-spacing:-.02em!important}</style></head>');
-        const themed=new Blob([file.slice(0,cut),tail],{type:'text/html'});
-        if(gameUrl)URL.revokeObjectURL(gameUrl);
-        gameUrl=URL.createObjectURL(themed);frame.src=gameUrl;frame.hidden=false;
-        message.textContent='ItsRecoil · loading Minecraft';
-        frame.addEventListener('load',()=>{message.textContent='Minecraft is ready.'},{once:true});
-      }catch{message.textContent='Could not open that HTML file.'}finally{launch.disabled=false}
+    gameLaunch.addEventListener('click',()=>{
+      gameLaunch.disabled=true;message.textContent='Loading ItsRecoil Minecraft…';
+      frame.src='/minecraft-client';frame.hidden=false;
+      frame.addEventListener('load',()=>{message.textContent='Minecraft is ready.';gameLaunch.disabled=false},{once:true});
     });
     full.addEventListener('click',()=>frame.requestFullscreen?.());
-    window.addEventListener('pagehide',()=>{if(gameUrl)URL.revokeObjectURL(gameUrl)});
   }
 })();`;
 
