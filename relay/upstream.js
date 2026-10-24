@@ -66,7 +66,7 @@ self.addEventListener('fetch', (event) => {
   // Restore the double slash instead of treating it as a root-relative path.
   const collapsed = url.pathname.match(/^\\/(https?):\\/(?!\\/)(.*)$/i);
   if (collapsed) {
-    event.respondWith(Response.redirect(self.location.origin + '/' + collapsed[1] + '://' + collapsed[2] + url.search, 302));
+    event.respondWith(Response.redirect(self.location.origin + '/' + collapsed[1] + '://' + collapsed[2] + url.search, req.method === 'GET' || req.method === 'HEAD' ? 302 : 307));
     return;
   }
 
@@ -85,7 +85,7 @@ self.addEventListener('fetch', (event) => {
     const m = embedded.match(/^(https?:\\/\\/[^/]+)/);
     if (!m) return;
     const corrected = self.location.origin + '/' + m[1] + url.pathname + url.search;
-    event.respondWith(Response.redirect(corrected, 302));
+    event.respondWith(Response.redirect(corrected, req.method === 'GET' || req.method === 'HEAD' ? 302 : 307));
   } catch (e) {
     // fall through to default handling
   }
@@ -93,7 +93,7 @@ self.addEventListener('fetch', (event) => {
 `;
 
 const HOME_HTML = `<!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -113,13 +113,13 @@ const HOME_HTML = `<!doctype html>
     --warn: #C7431E;
   }
   html[data-theme="dark"] {
-    --bg: #0A0A0C;
-    --surface: #151517;
-    --border: #29292D;
-    --text: #F1F1EF;
-    --text-dim: #8B8B91;
-    --accent: #6C89FF;
-    --accent-dim: #16193A;
+    --bg: #212121;
+    --surface: #303030;
+    --border: #4b4b4b;
+    --text: #ececec;
+    --text-dim: #a6a6a6;
+    --accent: #ececec;
+    --accent-dim: #3b3b3b;
     --warn: #FF8A63;
   }
   * { box-sizing: border-box; }
@@ -374,7 +374,7 @@ const HOME_HTML = `<!doctype html>
 
   var saved = null;
   try { saved = localStorage.getItem('relay-theme'); } catch (e) {}
-  var theme = saved || 'light';
+  var theme = saved || 'dark';
   root.setAttribute('data-theme', theme);
   applyIcon(theme);
 
@@ -442,7 +442,7 @@ function errorPage({ status, title, message, detail, targetUrl, proxyOrigin }) {
   const homeUrl = escapeHtml(proxyOrigin + '/');
 
   return `<!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -462,13 +462,13 @@ function errorPage({ status, title, message, detail, targetUrl, proxyOrigin }) {
     --warn: #C7431E;
   }
   html[data-theme="dark"] {
-    --bg: #0A0A0C;
-    --surface: #151517;
-    --border: #29292D;
-    --text: #F1F1EF;
-    --text-dim: #8B8B91;
-    --accent: #6C89FF;
-    --accent-dim: #16193A;
+    --bg: #212121;
+    --surface: #303030;
+    --border: #4b4b4b;
+    --text: #ececec;
+    --text-dim: #a6a6a6;
+    --accent: #ececec;
+    --accent-dim: #3b3b3b;
     --warn: #FF8A63;
   }
   * { box-sizing: border-box; }
@@ -689,7 +689,7 @@ function errorPage({ status, title, message, detail, targetUrl, proxyOrigin }) {
 
   var saved = null;
   try { saved = localStorage.getItem('relay-theme'); } catch (e) {}
-  var theme = saved || 'light';
+  var theme = saved || 'dark';
   root.setAttribute('data-theme', theme);
   applyIcon(theme);
 
@@ -970,7 +970,7 @@ export default {
     // else treats it as a root-relative reference.
     const collapsed = url.pathname.match(/^\/(https?):\/(?!\/)(.*)$/i);
     if (collapsed) {
-      return Response.redirect(proxyOrigin + '/' + collapsed[1] + '://' + collapsed[2] + url.search, 302);
+      return Response.redirect(proxyOrigin + '/' + collapsed[1] + '://' + collapsed[2] + url.search, request.method === 'GET' || request.method === 'HEAD' ? 302 : 307);
     }
 
     const alreadyEmbedded = /^\/https?:\/\//i.test(url.pathname);
@@ -1005,7 +1005,7 @@ export default {
             const m = embedded.match(/^(https?:\/\/[^/]+)/);
             if (m) {
               const corrected = proxyOrigin + '/' + m[1] + url.pathname + url.search;
-              return Response.redirect(corrected, 302);
+              return Response.redirect(corrected, request.method === 'GET' || request.method === 'HEAD' ? 302 : 307);
             }
           }
         } catch {
@@ -1922,15 +1922,33 @@ class ScriptInjector {
         });
       }
 
+      function relayEnsureHome() {
+        if (document.getElementById('__relay_home')) return;
+        var home = document.createElement('a');
+        home.id = '__relay_home';
+        relayNativeSetAttr.call(home, 'href', proxyOrigin + '/');
+        home.setAttribute('aria-label', 'Home — isRecool');
+        home.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;' +
+          'display:inline-flex;align-items:center;gap:6px;min-height:27px;padding:4px 9px;' +
+          'background:#303030;border:1px solid #777;border-radius:9px;' +
+          'color:#ececec;font:500 11px/1 Arial,Helvetica,sans-serif;text-decoration:none;' +
+          'box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer;touch-action:manipulation;';
+        home.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
+          'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span>';
+        (document.body || document.documentElement).appendChild(home);
+        home.addEventListener('click', function(e) { e.stopPropagation(); });
+      }
+
       function relayEnsurePanel() {
         if (document.getElementById('__relay_debug_toggle')) return;
 
         var toggle = document.createElement('button');
         toggle.id = '__relay_debug_toggle';
         toggle.type = 'button';
-        toggle.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;' +
-          'background:#111;border:1px solid #333;border-radius:4px;padding:6px 9px;' +
-          'color:#ccc;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.04em;' +
+        toggle.style.cssText = 'position:fixed;top:10px;right:97px;z-index:2147483647;' +
+          'background:#303030;border:1px solid #777;border-radius:9px;padding:6px 9px;' +
+          'color:#ececec;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:.02em;' +
           'cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.35);line-height:1;' +
           'touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
         toggle.textContent = 'relay';
@@ -1938,18 +1956,18 @@ class ScriptInjector {
         var panel = document.createElement('div');
         panel.id = '__relay_debug_panel';
         panel.style.cssText = 'position:fixed;top:42px;right:10px;z-index:2147483647;' +
-          'background:#111;border:1px solid #333;border-radius:6px;width:340px;' +
+          'background:#212121;border:1px solid #4b4b4b;border-radius:9px;width:340px;' +
           'max-width:calc(100vw - 20px);max-height:60vh;overflow:auto;display:none;' +
           'box-shadow:0 4px 16px rgba(0,0,0,.4);' +
           'font-family:ui-monospace,monospace;font-size:11px;';
         panel.innerHTML =
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;' +
-          'padding:6px 8px;background:#1a1a1a;border-bottom:1px solid #333;position:sticky;top:0;">' +
-          '<span style="color:#ccc;">relay B14-PANEL \u2014 failed requests</span>' +
+          'padding:6px 8px;background:#303030;border-bottom:1px solid #4b4b4b;position:sticky;top:0;">' +
+          '<span style="color:#ececec;">Relay requests</span>' +
           '<span style="display:flex;gap:10px;align-items:center;">' +
-          '<button id="__relay_debug_copy" style="background:none;border:1px solid #444;' +
-          'color:#ccc;border-radius:3px;cursor:pointer;font-size:10px;padding:2px 6px;">Copy</button>' +
-          '<button id="__relay_debug_close" style="background:none;border:0;color:#888;' +
+          '<button id="__relay_debug_copy" style="background:none;border:1px solid #777;' +
+          'color:#ececec;border-radius:5px;cursor:pointer;font-size:10px;padding:2px 6px;">Copy</button>' +
+          '<button id="__relay_debug_close" style="background:none;border:0;color:#a6a6a6;' +
           'cursor:pointer;font-size:14px;line-height:1;">\u00d7</button></span></div>' +
           '<div id="__relay_debug_list"></div>';
 
@@ -1984,6 +2002,12 @@ class ScriptInjector {
             done(false);
           }
         });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', relayEnsureHome, { once: true });
+      } else {
+        relayEnsureHome();
       }
 
       function relayRenderList() {
@@ -2370,6 +2394,7 @@ class ScriptInjector {
 
       function relayRewriteElement(el) {
         try {
+          if (el.id === '__relay_home') return;
           var attr = RELAY_URL_ATTRS[el.tagName];
           if (!attr) return;
           // Native accessors deliberately: the hooked getAttribute returns
@@ -2514,6 +2539,7 @@ class ScriptInjector {
           } catch (err) {}
           return;
         }
+        if (link.id === '__relay_home') return;
         // aria-haspopup is a strong, unambiguous signal that this isn't
         // real navigation — it specifically means "opens a menu/dialog".
         var haspopup = link.getAttribute('aria-haspopup');

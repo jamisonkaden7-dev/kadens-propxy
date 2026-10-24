@@ -197,6 +197,13 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     }), relayEnv, {});
     assert.equal(rootRelative.status, 302);
     assert.equal(rootRelative.headers.get('location'), `${relayOrigin}/https://duckduckgo.com/results?search_query=test`);
+    const youtubePost = await relayWorker.fetch(new Request(`${relayOrigin}/youtubei/v1/guide?prettyPrint=false`, {
+      method: 'POST',
+      headers: { Cookie: `${relayCookie}; __Host-kp_target=${encodeURIComponent('https://www.youtube.com')}`, 'Content-Type': 'application/json' },
+      body: '{}'
+    }), relayEnv, {});
+    assert.equal(youtubePost.status, 307);
+    assert.equal(youtubePost.headers.get('location'), `${relayOrigin}/https://www.youtube.com/youtubei/v1/guide?prettyPrint=false`);
     const googleBlocked = await relayWorker.fetch(new Request(`${relayOrigin}/https://www.google.com/sorry/index`, { headers: { Cookie: relayCookie } }), relayEnv, {});
     assert.equal(googleBlocked.status, 302);
     assert.equal(googleBlocked.headers.get('location'), `${origin}/browse?url=google`);

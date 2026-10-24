@@ -467,7 +467,6 @@ const css = `
 `;
 
 const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg>';
-const searchIcon = '<span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.8"/><path d="m16 16 5 5"/></svg></span>';
 
 function page(title, content, status = 200, googleScript = false, localScript = false) {
   const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><nav class="side-nav"><a class="nav-link" href="/app"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New browse</span></a><a class="nav-link" href="/login"><span class="nav-icon" aria-hidden="true">◌</span><span class="nav-label">Account</span></a></nav><div class="side-bottom"><a class="nav-link" href="/privacy"><span class="nav-icon" aria-hidden="true">ⓘ</span><span class="nav-label">Privacy</span></a></div></aside><div class="workspace"><header class="top"><span class="top-title">isRecool</span><span class="top-note">Private browser</span></header><main>${content}</main></div></div>`;
@@ -489,7 +488,7 @@ function googleLoginPage(env, origin) {
 }
 
 function keyPage(error = '', status = 200) {
-  return page('Enter key', `<section class="center"><div class="overline">Step 1 of 2 · Access</div><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><button class="go" type="submit" aria-label="Continue">↑</button></form><p class="helper"><span>A new key is claimed by the first Google account that signs in.</span></p></section>`, status);
+  return page('Enter key', `<section class="center"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Access key</span><button class="go" type="submit" aria-label="Continue">↑</button></div></form><p class="helper key-helper"><span>A new key is claimed by the first Google account that signs in.</span><span>Next: Google sign-in</span></p></section>`, status);
 }
 
 function privacyPage() {
@@ -516,7 +515,7 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get">${searchIcon}<input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit" aria-label="Open">↗</button></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true);
+  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Website or search</span><button class="go" type="submit" aria-label="Open">↑</button></div></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true);
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
@@ -527,5 +526,5 @@ function appPage(user, env, formToken, pending = '') {
 
 function googleChoicePage(target) {
   const query = target.searchParams.get('q') || '';
-  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get">${searchIcon}<input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><button class="go" type="submit" aria-label="Search">↗</button></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
+  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Web search</span><button class="go" type="submit" aria-label="Search">↑</button></div></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
 }

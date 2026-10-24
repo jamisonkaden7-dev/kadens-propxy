@@ -30,7 +30,7 @@ export default {
       const source = sourceFromReferer(request, url.origin) || sourceFromCookie(request);
       if (!source) return response(400, 'This page lost its website address. Go back to isRecool and open it again.');
       target = source + url.pathname + url.search;
-      return Response.redirect(`${url.origin}/${target}`, 302);
+      return Response.redirect(`${url.origin}/${target}`, request.method === 'GET' || request.method === 'HEAD' ? 302 : 307);
     }
     if (target) {
       try {

@@ -179,6 +179,24 @@ h1{font-size:clamp(31px,3.2vw,39px);line-height:1.2;letter-spacing:-.045em;margi
 .search:focus-within{border-color:#f4f4f4;box-shadow:0 0 0 3px #ffffff23,0 12px 28px #0003}
 @media(max-width:720px){.sidebar{width:72px;padding:20px 9px}.brand{padding:3px 14px 25px}.brand span:last-child,.nav-label,.side-bottom .nav-label{display:none}.nav-link{justify-content:center;padding:11px 0}.nav-icon{width:auto}.top{padding:0 22px}main{padding:50px 22px 100px}}
 @media(max-width:480px){.sidebar{width:58px;padding:17px 5px}.brand{padding:3px 11px 25px}.top{height:58px;padding:0 16px}.top-note{display:none}main{align-items:flex-start;padding:21vh 19px 65px}.center{width:100%}h1{font-size:32px}.subhead{font-size:14px}.search{min-height:61px}.search input{height:58px;padding:0 15px;font-size:14px}.go{margin-right:10px}.helper{font-size:11px}.identity{flex-direction:column;gap:3px}}
+.search{flex-direction:column;align-items:stretch;min-height:128px;border-radius:24px;padding:11px 15px 12px}
+.search input{flex:none;width:100%;height:59px;padding:0 6px}
+.composer-bar{display:flex;align-items:center;justify-content:space-between;min-height:39px;padding:0 1px}
+.composer-label{display:flex;align-items:center;gap:10px;color:#b7b7b7;font-size:12px}
+.composer-star{color:#e6e6e6;font-size:23px;line-height:1}
+.go{margin:0}
+.key-helper{justify-content:space-between;text-align:left}
+.workspace{background:radial-gradient(circle at 82% 15%,#ffffff0b,transparent 34%),radial-gradient(circle at 18% 85%,#ffffff06,transparent 38%),#202020}
+.sidebar{background:linear-gradient(145deg,#262626df,#171717eb);backdrop-filter:blur(22px) saturate(125%);-webkit-backdrop-filter:blur(22px) saturate(125%);border-right-color:#ffffff26}
+.top{background:linear-gradient(110deg,#ffffff0b,#ffffff03);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom-color:#ffffff25}
+.nav-link{background:linear-gradient(135deg,#ffffff0d,#ffffff03);border-color:#ffffff25;box-shadow:inset 0 1px #ffffff10}
+.side-nav .nav-link:first-child{background:linear-gradient(135deg,#ffffff1b,#ffffff07);border-color:#ffffff65}
+.search{position:relative;overflow:hidden;background:linear-gradient(145deg,#ffffff1d,#ffffff0c 58%,#ffffff15),#292929b8;backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);border-color:#ffffff8a;box-shadow:inset 0 1px #ffffff5c,inset 0 -1px #ffffff12,0 18px 48px #0005}
+.search:before{content:'';position:absolute;left:8%;right:8%;top:0;height:1px;background:linear-gradient(90deg,transparent,#ffffffa0,transparent);pointer-events:none}
+.search:focus-within{border-color:#fff;box-shadow:inset 0 1px #ffffff7a,0 0 0 3px #ffffff18,0 18px 48px #0006}
+.go{background:linear-gradient(145deg,#fff,#d5d5d5);box-shadow:inset 0 1px #fff,0 2px 9px #0004}
+.top-note,.overline,.alert{background:#ffffff0d;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px #ffffff1b}
+@media(max-width:480px){.search{min-height:116px;padding:9px 11px 10px}.search input{height:54px;padding:0 5px}.go{margin:0}.key-helper{justify-content:center;text-align:center}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
 
@@ -648,7 +666,6 @@ const css = `
 `;
 
 const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg>';
-const searchIcon = '<span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.8"/><path d="m16 16 5 5"/></svg></span>';
 
 function page(title, content, status = 200, googleScript = false, localScript = false) {
   const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><nav class="side-nav"><a class="nav-link" href="/app"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New browse</span></a><a class="nav-link" href="/login"><span class="nav-icon" aria-hidden="true">◌</span><span class="nav-label">Account</span></a></nav><div class="side-bottom"><a class="nav-link" href="/privacy"><span class="nav-icon" aria-hidden="true">ⓘ</span><span class="nav-label">Privacy</span></a></div></aside><div class="workspace"><header class="top"><span class="top-title">isRecool</span><span class="top-note">Private browser</span></header><main>${content}</main></div></div>`;
@@ -670,7 +687,7 @@ function googleLoginPage(env, origin) {
 }
 
 function keyPage(error = '', status = 200) {
-  return page('Enter key', `<section class="center"><div class="overline">Step 1 of 2 · Access</div><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><button class="go" type="submit" aria-label="Continue">↑</button></form><p class="helper"><span>A new key is claimed by the first Google account that signs in.</span></p></section>`, status);
+  return page('Enter key', `<section class="center"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Access key</span><button class="go" type="submit" aria-label="Continue">↑</button></div></form><p class="helper key-helper"><span>A new key is claimed by the first Google account that signs in.</span><span>Next: Google sign-in</span></p></section>`, status);
 }
 
 function privacyPage() {
@@ -697,7 +714,7 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get">${searchIcon}<input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><button class="go" type="submit" aria-label="Open">↗</button></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true);
+  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Website or search</span><button class="go" type="submit" aria-label="Open">↑</button></div></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true);
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
@@ -708,5 +725,5 @@ function appPage(user, env, formToken, pending = '') {
 
 function googleChoicePage(target) {
   const query = target.searchParams.get('q') || '';
-  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get">${searchIcon}<input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><button class="go" type="submit" aria-label="Search">↗</button></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
+  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Web search</span><button class="go" type="submit" aria-label="Search">↑</button></div></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
 }
