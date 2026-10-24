@@ -17,7 +17,7 @@ export default {
       const origin = url.origin;
       const path = url.pathname;
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
-      if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + '\n' + featureJs, { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff' } });
+      if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + '\n' + featureJs, { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
       if (path === '/music-api' && request.method === 'GET') return musicApi(url);
       if (path === '/music' && request.method === 'GET') return musicPage();
       if (path === '/settings' && request.method === 'GET') return settingsPage();
@@ -390,7 +390,7 @@ function proxyHeaders(type) {
     'Cache-Control': 'private, no-store',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
-    'Content-Security-Policy': "default-src 'none'; img-src 'self' data: https://jamisonkaden7-dev.github.io https://is1-ssl.mzstatic.com https://is2-ssl.mzstatic.com https://is3-ssl.mzstatic.com https://is4-ssl.mzstatic.com https://is5-ssl.mzstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob: https://audio-ssl.itunes.apple.com https://*.itunes.apple.com; form-action 'self'; base-uri 'none'; script-src 'none'; frame-src blob:"
+    'Content-Security-Policy': "default-src 'none'; img-src 'self' data: https://jamisonkaden7-dev.github.io https://cdn-images.dzcdn.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob: https://cdnt-preview.dzcdn.net; connect-src 'self'; form-action 'self'; base-uri 'none'; script-src 'none'; frame-src blob:"
   };
 }
 
@@ -493,7 +493,7 @@ function page(title, content, status = 200, googleScript = false, localScript = 
     headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://jamisonkaden7-dev.github.io https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   }
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · ItsRecoil</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}<script src="/ui.js?v=features1" defer></script></head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · ItsRecoil</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}<script src="/ui.js?v=features2" defer></script></head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
 }
 
 function googleWidget(env, origin) {
@@ -521,21 +521,26 @@ function settingsPage() {
 }
 
 function musicPage() {
-  return page('Music', `<section class="feature-page music-page"><div class="feature-head"><span class="section-kicker">MUSIC</span><h1>Find something to listen to.</h1><p>Search the iTunes catalog and play available previews. Open a track to listen in Apple Music.</p></div><form id="music-search" class="music-search"><input name="q" aria-label="Search songs and artists" placeholder="Search songs or artists" required><button type="submit">Search <span aria-hidden="true">→</span></button></form><div class="music-categories"><span>Try</span><button type="button" data-music-query="indie">Indie</button><button type="button" data-music-query="hip hop">Hip hop</button><button type="button" data-music-query="jazz">Jazz</button><button type="button" data-music-query="electronic">Electronic</button></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Tracks</h2><span>Provided courtesy of iTunes</span></div><div id="music-results"><p class="music-empty">Search to see tracks.</p></div></section><aside class="feature-card music-player"><span class="section-kicker">NOW PLAYING</span><img id="music-art" alt="" hidden><h2 id="music-now">Choose a song</h2><p>Previews play here when available.</p><audio id="music-audio" controls preload="none"></audio><div class="player-actions"><button type="button" id="music-prev" aria-label="Previous song">← Previous</button><button type="button" id="music-next" aria-label="Next song">Next →</button></div></aside></div></section>`);
+  return page('Music', `<section class="feature-page music-page"><div class="feature-head"><span class="section-kicker">MUSIC</span><h1>Find something to listen to.</h1><p>Search songs and play available previews. Open a track to listen in Deezer.</p></div><form id="music-search" class="music-search"><input name="q" aria-label="Search songs and artists" placeholder="Search songs or artists" required><button type="submit">Search <span aria-hidden="true">→</span></button></form><div class="music-categories"><span>Try</span><button type="button" data-music-query="indie">Indie</button><button type="button" data-music-query="hip hop">Hip hop</button><button type="button" data-music-query="jazz">Jazz</button><button type="button" data-music-query="electronic">Electronic</button></div><div class="music-layout"><section class="feature-card music-list"><div class="feature-card-head"><h2>Tracks</h2><span>Previews via Deezer</span></div><div id="music-results"><p class="music-empty">Search to see tracks.</p></div></section><aside class="feature-card music-player"><span class="section-kicker">NOW PLAYING</span><img id="music-art" alt="" hidden><h2 id="music-now">Choose a song</h2><p>Previews play here when available.</p><audio id="music-audio" controls preload="none"></audio><div class="player-actions"><button type="button" id="music-prev" aria-label="Previous song">← Previous</button><button type="button" id="music-next" aria-label="Next song">Next →</button></div></aside></div></section>`);
 }
 
 async function musicApi(url) {
   const query = String(url.searchParams.get('q') || '').trim().slice(0, 100);
   if (!query) return new Response(JSON.stringify({ resultCount: 0, results: [] }), { headers: { 'Content-Type': 'application/json' } });
   try {
-    const source = new URL('https://itunes.apple.com/search');
-    source.searchParams.set('term', query);
-    source.searchParams.set('entity', 'song');
+    const source = new URL('https://api.deezer.com/search');
+    source.searchParams.set('q', query);
     source.searchParams.set('limit', '35');
     const upstream = await fetch(source, { headers: { Accept: 'application/json' } });
     if (!upstream.ok) throw new Error('Music API unavailable');
     const data = await upstream.json();
-    return new Response(JSON.stringify({ resultCount: data.resultCount, results: data.results }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' } });
+    if (!Array.isArray(data.data)) throw new Error('Invalid music response');
+    const results = data.data.map(track => ({
+      kind: 'song', trackName: track.title, artistName: track.artist?.name,
+      collectionName: track.album?.title, artworkUrl100: track.album?.cover_medium,
+      previewUrl: track.preview, trackViewUrl: track.link
+    }));
+    return new Response(JSON.stringify({ resultCount: results.length, results }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=120', 'Access-Control-Allow-Origin': '*' } });
   } catch {
     return new Response(JSON.stringify({ error: 'Music search is unavailable' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
   }
@@ -571,7 +576,7 @@ function appPage(user, env, formToken, pending = '') {
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
-    response.headers.set('Content-Security-Policy', `${response.headers.get('Content-Security-Policy')}; connect-src ${relayOrigin}`);
+    response.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy').replace("connect-src 'self'", `connect-src 'self' ${relayOrigin}`));
   }
   return response;
 }
