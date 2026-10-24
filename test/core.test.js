@@ -124,13 +124,44 @@ test('music search returns playable Deezer previews and permits the page request
       assert.equal(new URL(input).origin, 'https://api.deezer.com');
       return Response.json({ data: [{ title: 'Sample song', artist: { name: 'Sample artist' }, album: { title: 'Sample album', cover_medium: 'https://cdn-images.dzcdn.net/cover.jpg' }, preview: 'https://cdnt-preview.dzcdn.net/sample.mp3', link: 'https://www.deezer.com/track/1' }] });
     };
-    const api = await worker.fetch(new Request('https://app.example/music-api?q=sample'), env);
+    const api = await worker.fetch(new Request('https://app.example/music-api?q=sample&source=deezer'), env);
     assert.equal(api.status, 200);
     const data = await api.json();
     assert.equal(data.results[0].previewUrl, 'https://cdnt-preview.dzcdn.net/sample.mp3');
     const page = await worker.fetch(new Request('https://app.example/music'), env);
     assert.match(page.headers.get('Content-Security-Policy'), /connect-src 'self'/);
     assert.match(page.headers.get('Content-Security-Policy'), /media-src[^;]*cdnt-preview\.dzcdn\.net/);
+  } finally { globalThis.fetch = priorFetch; }
+});
+
+test('Audius search and album return full tracks, and Minecraft launches without a file picker', async () => {
+  const priorFetch = globalThis.fetch;
+  const env = { DB: fakeDb([]), GOOGLE_CLIENT_ID: 'test-client', SESSION_SECRET: 'test-secret' };
+  const track = { id: 'DX0Xb', title: 'Full song', duration: 243, user: { name: 'Artist' }, artwork: { '480x480': 'https://example.com/cover.jpg' }, permalink: '/artist/full-song', is_streamable: true, access: { stream: true }, album_backlink: { playlist_id: 8538, playlist_name: 'Album' } };
+  try {
+    globalThis.fetch = async input => {
+      const url = new URL(input);
+      if (url.pathname.endsWith('/tracks/search')) return Response.json({ data: [track] });
+      if (url.pathname.endsWith('/playlists/8538')) return Response.json({ data: [{ playlist_name: 'Album', permalink: '/artist/album/album-8538', artwork: track.artwork, user: track.user, tracks: [track] }] });
+      if (url.pathname.endsWith('/tracks/DX0Xb/stream')) return new Response('audio', { headers: { 'Content-Type': 'audio/mpeg' } });
+      if (url.hostname === 'raw.githubusercontent.com') return new Response('<!doctype html><title>Eaglercraft</title>', { headers: { 'Content-Type': 'text/plain' } });
+      throw new Error(`Unexpected fetch: ${url}`);
+    };
+    const search = await (await worker.fetch(new Request('https://app.example/music-api?q=full'), env)).json();
+    assert.equal(search.results[0].full, true);
+    assert.equal(search.results[0].albumId, '8538');
+    const album = await (await worker.fetch(new Request('https://app.example/music-album-api?source=audius&id=8538'), env)).json();
+    assert.equal(album.trackCount, 1);
+    assert.equal(album.results[0].previewUrl, '/music-stream?id=DX0Xb');
+    const stream = await worker.fetch(new Request('https://app.example/music-stream?id=DX0Xb'), env);
+    assert.equal(stream.status, 200);
+    assert.equal(stream.headers.get('Content-Type'), 'audio/mpeg');
+    const gamePage = await (await worker.fetch(new Request('https://app.example/minecraft'), env)).text();
+    assert.match(gamePage, /id="minecraft-launch"/);
+    assert.doesNotMatch(gamePage, /type="file"/);
+    const client = await worker.fetch(new Request('https://app.example/minecraft-client'), env);
+    assert.equal(client.status, 200);
+    assert.match(client.headers.get('Content-Type'), /text\/html/);
   } finally { globalThis.fetch = priorFetch; }
 });
 
@@ -181,7 +212,7 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter an address/);
-    assert.match(appHtml, /src="\/ui\.js\?v=features2"/);
+    assert.match(appHtml, /src="\/ui\.js\?v=features3"/);
     assert.doesNotMatch(appHtml, /class="boot"/);
     assert.match(appHtml, /ItsRecoil/);
     const account = await worker.fetch(new Request(`${origin}/account`, { headers: { Cookie: sessionCookie } }), env);
