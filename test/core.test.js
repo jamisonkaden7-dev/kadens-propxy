@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSign, generateKeyPairSync } from 'node:crypto';
+import { createHmac, createSign, generateKeyPairSync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { claimKey, claimGoogleKey, hashKey, hasAccess, hasGoogleAccess, linkGoogleKey, normalizeTarget, resolveDestination } from '../src/core.js';
 import worker from '../src/worker.js';
 import relayWorker from '../relay/worker.js';
@@ -46,6 +47,7 @@ function fakeDb(hashes) {
             },
             async first() {
               if (sql.includes('WHERE key_hash')) return owners.get(args[0]) || null;
+              if (sql.includes('WHERE google_sub = ? AND key_hash = ?')) return owners.get(args[1])?.google_sub === String(args[0]) ? { allowed: 1 } : null;
               if (sql.includes('WHERE google_sub')) return [...owners.values()].some(item => item.google_sub === String(args[0])) ? { allowed: 1 } : null;
               if (sql.includes('WHERE github_user_id')) {
                 const row = [...owners.values()].find(item => item.github_user_id === Number(args[0]));
@@ -96,6 +98,13 @@ test('address input accepts domains and searches but rejects private targets', (
   }
 });
 
+test('GitHub Pages asks for a key before offering browsing', () => {
+  const html = readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8');
+  assert.match(html, /<form class="search" action="https:\/\/kadens-propxy\.jamisonkaden7\.workers\.dev\/access" method="post">/);
+  assert.match(html, /name="key" type="password"/);
+  assert.doesNotMatch(html, /name="url"/);
+});
+
 test('key-first Google sign-in, account binding, sign-out, and full-page relay launch', async () => {
   const origin = 'https://kadens-propxy.example.workers.dev';
   const relayOrigin = 'https://kadens-propxy-relay.example.workers.dev';
@@ -132,6 +141,13 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const callback = await worker.fetch(new Request(`${origin}/oauth/google/callback`, { method: 'POST', headers: { Cookie: `${keyCookie}; g_csrf_token=sample` }, body: new URLSearchParams({ credential, g_csrf_token: 'sample' }) }), env);
     assert.equal(callback.status, 303);
     const sessionCookie = callback.headers.getSetCookie().find(value => value.startsWith('__Host-kp_session=')).split(';')[0];
+    const oldData = JSON.parse(Buffer.from(sessionCookie.split('=')[1].split('.')[0], 'base64url').toString());
+    delete oldData.keyHash;
+    const oldPayload = Buffer.from(JSON.stringify(oldData)).toString('base64url');
+    const oldSignature = createHmac('sha256', env.SESSION_SECRET).update(oldPayload).digest('base64url');
+    const oldSession = await worker.fetch(new Request(`${origin}/browse?url=youtube`, { headers: { Cookie: `__Host-kp_session=${oldPayload}.${oldSignature}` } }), env);
+    assert.equal(oldSession.status, 302);
+    assert.equal(oldSession.headers.get('location'), `${origin}/login`);
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter an address/);
@@ -141,7 +157,10 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     assert.equal(after.headers.get('Link'), '<https://kadens-propxy-relay.example.workers.dev>; rel=preconnect');
     const signout = await worker.fetch(new Request(`${origin}/logout`, { method: 'POST', headers: { Cookie: sessionCookie }, body: new URLSearchParams({ form_token: 'stale' }) }), env);
     assert.equal(signout.status, 303);
-    assert.equal(signout.headers.get('location'), `${origin}/login`);
+    assert.equal(signout.headers.get('location'), `${relayOrigin}/__kaden_exit`);
+    const relayExit = await relayWorker.fetch(new Request(`${relayOrigin}/__kaden_exit`), { DB: db, RELAY_SECRET: 'test-relay-secret', APP_URL: `${origin}/app` }, {});
+    assert.equal(relayExit.status, 302);
+    assert.match(relayExit.headers.get('set-cookie'), /__Host-kp_relay=;.*Max-Age=0/);
     const secondAccess = await worker.fetch(new Request(`${origin}/access`, { method: 'POST', body: new URLSearchParams({ key: 'example-secret' }) }), env);
     const secondKeyCookie = secondAccess.headers.getSetCookie().find(value => value.startsWith('__Host-kp_key=')).split(';')[0];
     const wrongPayload = Buffer.from(JSON.stringify({ iss: 'https://accounts.google.com', aud: env.GOOGLE_CLIENT_ID, sub: '222222222222222222222', email: 'wrong@example.com', email_verified: true, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000)+3600 })).toString('base64url');

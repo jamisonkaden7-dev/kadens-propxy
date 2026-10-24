@@ -93,6 +93,12 @@ export async function hasGoogleAccess(db, googleSub) {
   return Boolean(row);
 }
 
+export async function hasGoogleKeyAccess(db, googleSub, hash) {
+  if (!/^[a-f0-9]{64}$/.test(String(hash))) return false;
+  const row = await db.prepare('SELECT 1 AS allowed FROM access_keys WHERE google_sub = ? AND key_hash = ? LIMIT 1').bind(String(googleSub), hash).first();
+  return Boolean(row);
+}
+
 export async function linkGoogleKey(db, githubUserId, googleSub) {
   const update = await db.prepare(
     'UPDATE access_keys SET google_sub = ? WHERE github_user_id = ? AND google_sub IS NULL AND NOT EXISTS (SELECT 1 FROM access_keys WHERE google_sub = ?)'

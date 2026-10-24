@@ -13,11 +13,12 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/__kaden_launch' && request.method === 'GET') return launch(request, env, url);
 
+    if (url.pathname === '/__kaden_exit') {
+      return new Response(null, { status: 302, headers: { Location: env.APP_URL, 'Set-Cookie': `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`, 'Cache-Control': 'no-store' } });
+    }
+
     const session = await readSession(request, env.RELAY_SECRET);
     if (!session || (env.GOOGLE_REQUIRED === 'true' && session.kind !== 'google')) return Response.redirect(env.APP_URL, 302);
-    if (url.pathname === '/__kaden_exit') {
-      return new Response(null, { status: 302, headers: { Location: env.APP_URL, 'Set-Cookie': `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax` } });
-    }
     if (url.pathname === '/') return Response.redirect(env.APP_URL, 302);
 
     if (isGoogleFallbackPath(url.pathname)) return googleFallback(env.APP_URL);

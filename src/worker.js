@@ -1,4 +1,4 @@
-import { claimKey, claimGoogleKeyHash, hashKey, keyExists, hasAccess, hasGoogleAccess, linkGoogleKey, normalizeTarget, resolveDestination } from './core.js';
+import { claimKey, claimGoogleKeyHash, hashKey, keyExists, hasAccess, hasGoogleKeyAccess, linkGoogleKey, normalizeTarget, resolveDestination } from './core.js';
 import { css as modernCss } from './ui.js';
 
 const SESSION_AGE = 7 * 24 * 60 * 60;
@@ -40,7 +40,8 @@ export default {
 
       const user = await readSession(request, env.SESSION_SECRET);
       if (path === '/logout' && request.method === 'POST') {
-        const response = redirect(`${origin}/login`, 303);
+        const exitUrl = env.RELAY_URL ? `${new URL(env.RELAY_URL).origin}/__kaden_exit` : `${origin}/login`;
+        const response = redirect(exitUrl, 303);
         response.headers.set('Set-Cookie', cookie('__Host-kp_session', '', 0, 'None'));
         response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
         response.headers.append('Set-Cookie', cookie('__Host-kp_key', '', 0, 'None'));
@@ -57,7 +58,7 @@ export default {
         if (!user) return Response.redirect(`${origin}/login`, 302);
         const formToken = await makeFormToken(request, env.SESSION_SECRET);
         const pending = readPending(request);
-        if (user.kind === 'google') return (await hasGoogleAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : redirect(`${origin}/login`, 302);
+        if (user.kind === 'google') return (await hasGoogleKeyAccess(env.DB, user.id, user.keyHash)) ? appPage(user, env, formToken, pending) : redirect(`${origin}/login`, 302);
         if (env.GOOGLE_CLIENT_ID) return (await hasAccess(env.DB, user.id)) ? await linkPage(user, env, formToken, origin) : googleLoginPage(env, origin);
         return (await hasAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
       }
@@ -80,7 +81,7 @@ export default {
           return response;
         }
         if (env.GOOGLE_CLIENT_ID && user.kind !== 'google') return Response.redirect(`${origin}/app`, 302);
-        const allowed = user.kind === 'google' ? await hasGoogleAccess(env.DB, user.id) : await hasAccess(env.DB, user.id);
+        const allowed = user.kind === 'google' ? await hasGoogleKeyAccess(env.DB, user.id, user.keyHash) : await hasAccess(env.DB, user.id);
         if (!allowed) return Response.redirect(`${origin}/app`, 302);
         const target = resolveDestination(url.searchParams.get('url'));
         if (['google.com', 'www.google.com'].includes(target.hostname)) {
@@ -103,7 +104,7 @@ export default {
         return proxyPage(url.searchParams.get('url'), origin);
       }
       if (path === '/asset' && request.method === 'GET') {
-        if (!user || !(user.kind === 'google' ? await hasGoogleAccess(env.DB, user.id) : await hasAccess(env.DB, user.id))) return new Response('Unauthorized', { status: 401 });
+        if (!user || !(user.kind === 'google' ? await hasGoogleKeyAccess(env.DB, user.id, user.keyHash) : await hasAccess(env.DB, user.id))) return new Response('Unauthorized', { status: 401 });
         return proxyAsset(url.searchParams.get('url'), origin);
       }
       if (path === '/form' && request.method === 'GET') {
@@ -195,7 +196,7 @@ async function validFormToken(request, secret, form) {
 }
 
 async function makeSession(identity, secret) {
-  const payload = b64url(encoder.encode(JSON.stringify({ kind: identity.kind || 'github', id: identity.id, login: identity.login, exp: Math.floor(Date.now() / 1000) + SESSION_AGE })));
+  const payload = b64url(encoder.encode(JSON.stringify({ kind: identity.kind || 'github', id: identity.id, login: identity.login, keyHash: identity.keyHash, exp: Math.floor(Date.now() / 1000) + SESSION_AGE })));
   const signature = b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(secret), encoder.encode(payload))));
   return `${payload}.${signature}`;
 }
@@ -212,7 +213,7 @@ async function readSession(request, secret) {
     data.kind ||= 'github';
     if (!['github', 'google'].includes(data.kind) || typeof data.login !== 'string' || !Number.isFinite(data.exp) || data.exp < Date.now() / 1000) return null;
     if (data.kind === 'github' && !Number.isSafeInteger(data.id)) return null;
-    if (data.kind === 'google' && !/^\d{5,30}$/.test(String(data.id))) return null;
+    if (data.kind === 'google' && (!/^\d{5,30}$/.test(String(data.id)) || !/^[a-f0-9]{64}$/.test(String(data.keyHash)))) return null;
     return data;
   } catch { return null; }
 }
@@ -303,6 +304,7 @@ async function finishGoogleLogin(request, env, origin) {
   catch (error) { return errorPage(error.message, 403); }
   const status = await claimGoogleKeyHash(env.DB, pendingHash, identity.id);
   if (status !== 'claimed' && status !== 'owned') return keyPage('That key belongs to another account. Sign in with the Google account that first redeemed it.', 403);
+  identity.keyHash = pendingHash;
   const session = await makeSession(identity, env.SESSION_SECRET);
   const response = redirect(`${origin}/app`, 303);
   response.headers.append('Set-Cookie', cookie('__Host-kp_link', '', 0, 'None'));
