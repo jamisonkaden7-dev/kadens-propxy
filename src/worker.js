@@ -470,7 +470,7 @@ const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72
 const searchIcon = '<span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.8"/><path d="m16 16 5 5"/></svg></span>';
 
 function page(title, content, status = 200, googleScript = false, localScript = false) {
-  const shell = `<div class="shell"><header class="top"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><span class="top-note">PRIVATE WEB</span></header><main>${content}</main></div>`;
+  const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><nav class="side-nav"><a class="nav-link" href="/app"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New browse</span></a><a class="nav-link" href="/login"><span class="nav-icon" aria-hidden="true">◌</span><span class="nav-label">Account</span></a></nav><div class="side-bottom"><a class="nav-link" href="/privacy"><span class="nav-icon" aria-hidden="true">ⓘ</span><span class="nav-label">Privacy</span></a></div></aside><div class="workspace"><header class="top"><span class="top-title">isRecool</span><span class="top-note">Private browser</span></header><main>${content}</main></div></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
   if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
@@ -489,7 +489,7 @@ function googleLoginPage(env, origin) {
 }
 
 function keyPage(error = '', status = 200) {
-  return page('Enter key', `<section class="center"><div class="overline">isRecool / 01 — access</div><h1>Enter your key.</h1><p class="subhead">Your key is checked before Google sign-in. A new key belongs to the first Google account that signs in with it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form action="/access" method="post"><label class="overline" for="key">Access key</label><input class="key-input" id="key" name="key" type="password" maxlength="100" required autocomplete="off" placeholder="Paste your key" autofocus><button class="key-submit" type="submit">Continue →</button></form></section>`, status);
+  return page('Enter key', `<section class="center"><div class="overline">Step 1 of 2 · Access</div><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><button class="go" type="submit" aria-label="Continue">↑</button></form><p class="helper"><span>A new key is claimed by the first Google account that signs in.</span></p></section>`, status);
 }
 
 function privacyPage() {
