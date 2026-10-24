@@ -116,6 +116,24 @@ test('GitHub Pages asks for a key before offering browsing', () => {
   assert.doesNotMatch(html, /name="url"/);
 });
 
+test('music search returns playable Deezer previews and permits the page request', async () => {
+  const priorFetch = globalThis.fetch;
+  const env = { DB: fakeDb([]), GOOGLE_CLIENT_ID: 'test-client', SESSION_SECRET: 'test-secret' };
+  try {
+    globalThis.fetch = async input => {
+      assert.equal(new URL(input).origin, 'https://api.deezer.com');
+      return Response.json({ data: [{ title: 'Sample song', artist: { name: 'Sample artist' }, album: { title: 'Sample album', cover_medium: 'https://cdn-images.dzcdn.net/cover.jpg' }, preview: 'https://cdnt-preview.dzcdn.net/sample.mp3', link: 'https://www.deezer.com/track/1' }] });
+    };
+    const api = await worker.fetch(new Request('https://app.example/music-api?q=sample'), env);
+    assert.equal(api.status, 200);
+    const data = await api.json();
+    assert.equal(data.results[0].previewUrl, 'https://cdnt-preview.dzcdn.net/sample.mp3');
+    const page = await worker.fetch(new Request('https://app.example/music'), env);
+    assert.match(page.headers.get('Content-Security-Policy'), /connect-src 'self'/);
+    assert.match(page.headers.get('Content-Security-Policy'), /media-src[^;]*cdnt-preview\.dzcdn\.net/);
+  } finally { globalThis.fetch = priorFetch; }
+});
+
 test('key-first Google sign-in, account binding, sign-out, and full-page relay launch', async () => {
   const origin = 'https://kadens-propxy.example.workers.dev';
   const relayOrigin = 'https://kadens-propxy-relay.example.workers.dev';
@@ -163,14 +181,14 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter an address/);
-    assert.match(appHtml, /src="\/ui\.js\?v=features1"/);
+    assert.match(appHtml, /src="\/ui\.js\?v=features2"/);
     assert.doesNotMatch(appHtml, /class="boot"/);
     assert.match(appHtml, /ItsRecoil/);
     const account = await worker.fetch(new Request(`${origin}/account`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(account.status, 200);
     assert.match(await account.text(), /owner@example\.com/);
     assert.match(after.headers.get('Content-Security-Policy'), /form-action https:/);
-    assert.match(after.headers.get('Content-Security-Policy'), /connect-src https:\/\/kadens-propxy-relay\.example\.workers\.dev/);
+    assert.match(after.headers.get('Content-Security-Policy'), /connect-src 'self' https:\/\/kadens-propxy-relay\.example\.workers\.dev/);
     assert.equal(after.headers.get('Link'), '<https://kadens-propxy-relay.example.workers.dev>; rel=preconnect');
     const signout = await worker.fetch(new Request(`${origin}/logout`, { method: 'POST', headers: { Cookie: sessionCookie }, body: new URLSearchParams({ form_token: 'stale' }) }), env);
     assert.equal(signout.status, 303);
