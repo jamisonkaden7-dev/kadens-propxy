@@ -16,7 +16,7 @@ export default {
       const origin = url.origin;
       const path = url.pathname;
       if (path === '/privacy' && request.method === 'GET') return privacyPage();
-      if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + "\n" + "document.querySelectorAll('form.search').forEach(form=>form.addEventListener('submit',()=>{const button=form.querySelector('button[type=submit]');if(!button)return;const original=button.textContent;button.textContent='Opening…';setTimeout(()=>{button.textContent=original},8000)}));", { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
+      if (path === '/ui.js' && request.method === 'GET') return new Response(bootJs + "\n" + "document.querySelectorAll('form.search:not(.key-search)').forEach(form=>form.addEventListener('submit',()=>{const button=form.querySelector('button[type=submit]');if(!button)return;const original=button.textContent;button.textContent='Opening…';setTimeout(()=>{button.textContent=original},8000)}));", { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
       if (path === '/login' && request.method === 'GET') return env.GOOGLE_CLIENT_ID ? keyPage() : startLogin(env, origin);
       if (path === '/access' && request.method === 'POST' && env.GOOGLE_CLIENT_ID) {
         const form = await request.formData();
@@ -61,6 +61,10 @@ export default {
         if (user.kind === 'google') return (await hasGoogleKeyAccess(env.DB, user.id, user.keyHash)) ? appPage(user, env, formToken, pending) : redirect(`${origin}/login`, 302);
         if (env.GOOGLE_CLIENT_ID) return (await hasAccess(env.DB, user.id)) ? await linkPage(user, env, formToken, origin) : googleLoginPage(env, origin);
         return (await hasAccess(env.DB, user.id)) ? appPage(user, env, formToken, pending) : claimPage(user, formToken);
+      }
+      if (path === '/account' && request.method === 'GET') {
+        if (!user) return Response.redirect(`${origin}/login`, 302);
+        return accountPage(user, await makeFormToken(request, env.SESSION_SECRET));
       }
       if (path === '/claim' && request.method === 'POST') {
         if (!user) return Response.redirect(`${origin}/login`, 303);
@@ -467,14 +471,21 @@ const css = `
 `;
 
 function page(title, content, status = 200, googleScript = false, localScript = false, showBoot = false) {
-  const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span>isRecool</span></a><nav class="side-nav"><a class="nav-link" href="/app"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="nav-label">New browse</span></a><a class="nav-link" href="/login"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.5-5.5 7-5.5s6 2 7 5.5"/></svg></span><span class="nav-label">Account</span></a></nav><div class="side-bottom"><a class="nav-link" href="/privacy"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></span><span class="nav-label">Privacy</span></a></div></aside><div class="workspace"><header class="top"><span class="top-title">isRecool</span><span class="top-note">Private browser</span></header><main>${content}</main></div></div>`;
+  const active = title === 'Browse' ? 'browse' : title === 'Enter key' || title === 'Claim a key' ? 'key' : title === 'Privacy' ? 'privacy' : title === 'Account' || title === 'Sign in' || title === 'Link Google' ? 'account' : '';
+  const heading = title === 'Enter key' || title === 'Claim a key' ? 'Access' : title === 'Sign in' || title === 'Link Google' ? 'Account' : title;
+  const nav = (name, href, label, icon) => `<a class="nav-link${active === name ? ' is-active' : ''}" href="${href}"${active === name ? ' aria-current="page"' : ''}><span class="nav-icon" aria-hidden="true">${icon}</span><span class="nav-label">${label}</span></a>`;
+  const browseIcon = '<svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M9 20v-6h6v6"/></svg>';
+  const keyIcon = '<svg viewBox="0 0 24 24"><circle cx="8" cy="10" r="3.5"/><path d="M11.5 10H21v3h-3v3h-3v-3h-3.5"/></svg>';
+  const accountIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.5-5.5 7-5.5s6 2 7 5.5"/></svg>';
+  const privacyIcon = '<svg viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.3 8-8 9-4.7-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>';
+  const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="brand-mark" aria-hidden="true">i<span class="brand-status"></span></span><span class="brand-copy"><strong>isRecool</strong><small>Private browser</small></span></a><div class="side-group"><span class="side-label">WORKSPACE</span><nav class="side-nav">${nav('browse', '/app', 'Browse', browseIcon)}${nav('key', '/login', 'Access key', keyIcon)}${nav('account', '/account', 'Account', accountIcon)}</nav></div><div class="side-bottom"><div class="side-card"><span class="side-card-tag">ACCESS</span><strong>Invite-only browsing</strong><p>Enter a key, then use the Google account connected to it.</p></div>${nav('privacy', '/privacy', 'Privacy', privacyIcon)}</div></aside><div class="workspace"><header class="top"><span class="top-title">${escapeHtml(heading)}</span><a class="top-action" href="/privacy"><span class="status-dot" aria-hidden="true"></span>Private browsing</a></header><main class="view view-${active || 'other'}">${content}</main></div></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
   if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
     headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://jamisonkaden7-dev.github.io https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   }
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · isRecool</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}${localScript ? '<script src="/ui.js?v=boot3" defer></script>' : ''}</head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · isRecool</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}${localScript ? '<script src="/ui.js?v=boot4" defer></script>' : ''}</head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
 }
 
 function googleWidget(env, origin) {
@@ -486,7 +497,11 @@ function googleLoginPage(env, origin) {
 }
 
 function keyPage(error = '', status = 200) {
-  return page('Enter key', `<section class="center"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><div class="composer-bar"><span class="composer-label">Access key</span><button class="go" type="submit" aria-label="Continue">↑</button></div></form><p class="helper key-helper">First Google sign-in claims a new key.</p></section>`, status, false, true, true);
+  return page('Enter key', `<section class="center key-screen"><div class="key-main"><span class="section-kicker">GET STARTED</span><div class="key-intro"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p></div>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search key-search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><button class="go" type="submit" aria-label="Continue">→</button></form><p class="helper key-helper">First Google sign-in claims a new key.</p></div><aside class="access-panel"><span class="section-kicker">HOW IT WORKS</span><h2>Access in two steps</h2><div class="access-step"><span>01</span><div><strong>Enter your key</strong><p>Use the invite key you were given.</p></div></div><div class="access-step"><span>02</span><div><strong>Sign in with Google</strong><p>New keys become tied to that account.</p></div></div></aside></section>`, status, false, true, true);
+}
+
+function accountPage(user, formToken) {
+  return page('Account', `<section class="center account-screen"><span class="section-kicker">YOUR ACCOUNT</span><h1>Account</h1><p class="subhead">Your browsing session is connected to this sign-in.</p><div class="account-row"><span>Signed in as</span><strong>${escapeHtml(user.login)}</strong></div><div class="account-row"><span>Sign-in method</span><strong>${user.kind === 'google' ? 'Google' : 'GitHub'}</strong></div><div class="account-actions"><a class="chip" href="/app">Back to browse</a>${logoutForm(formToken)}</div></section>`);
 }
 
 function privacyPage() {
