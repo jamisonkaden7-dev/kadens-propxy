@@ -163,7 +163,9 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     const after = await worker.fetch(new Request(`${origin}/app`, { headers: { Cookie: sessionCookie } }), env);
     const appHtml = await after.text();
     assert.match(appHtml, /Search or enter an address/);
-    assert.match(appHtml, /src="\/ui\.js\?v=boot4"/);
+    assert.match(appHtml, /src="\/ui\.js\?v=features1"/);
+    assert.doesNotMatch(appHtml, /class="boot"/);
+    assert.match(appHtml, /ItsRecoil/);
     const account = await worker.fetch(new Request(`${origin}/account`, { headers: { Cookie: sessionCookie } }), env);
     assert.equal(account.status, 200);
     assert.match(await account.text(), /owner@example\.com/);
@@ -218,6 +220,11 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     assert.equal(youtubeHome.headers.get('location'), `${relayOrigin}/https://www.youtube.com/`);
     const appHome = await relayWorker.fetch(new Request(`${relayOrigin}/__kaden_home`, { headers: { Cookie: relayCookie } }), relayEnv, {});
     assert.equal(appHome.headers.get('location'), `${origin}/app`);
+    const watch = await relayWorker.fetch(new Request(`${relayOrigin}/https://www.youtube.com/watch?v=u3S4hGVFCuw`, {
+      headers: { Cookie: relayCookie, 'Sec-Fetch-Dest': 'document' }
+    }), relayEnv, {});
+    assert.equal(watch.status, 200);
+    assert.match(await watch.text(), /youtube-nocookie\.com\/embed\/u3S4hGVFCuw/);
     const youtubePost = await relayWorker.fetch(new Request(`${relayOrigin}/youtubei/v1/guide?prettyPrint=false`, {
       method: 'POST',
       headers: { Cookie: `${relayCookie}; __Host-kp_target=${encodeURIComponent('https://www.youtube.com')}`, 'Content-Type': 'application/json' },
@@ -230,6 +237,7 @@ test('key-first Google sign-in, account binding, sign-out, and full-page relay l
     assert.equal(googleBlocked.headers.get('location'), `${origin}/browse?url=google`);
     const google404 = await relayWorker.fetch(new Request(`${relayOrigin}/https://accounts.google.com/results?search_query=test`, { headers: { Cookie: relayCookie } }), relayEnv, {});
     assert.equal(google404.status, 302);
-    assert.equal(google404.headers.get('location'), `${origin}/browse?url=google`);
+    assert.equal(google404.headers.get('location'), `${origin}/search?q=test`);
   } finally { globalThis.fetch = priorFetch; }
 });
+
