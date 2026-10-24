@@ -122,8 +122,6 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #d8d8
 .shell{min-height:100vh;display:flex}
 .sidebar{width:260px;flex:none;min-height:100vh;background:var(--sidebar);padding:22px 13px;display:flex;flex-direction:column}
 .brand{display:flex;align-items:center;gap:10px;padding:4px 12px 28px;color:#f3f3f3;text-decoration:none;font-size:18px;font-weight:650;letter-spacing:-.04em}
-.mark{width:25px;height:25px;display:grid;place-items:center}
-.mark svg{width:23px;height:23px;fill:none;stroke:#f0f0f0;stroke-width:4;stroke-linejoin:round}
 .side-nav{display:grid;gap:5px}
 .nav-link{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:9px;color:#ddd;text-decoration:none;font-size:14px;line-height:1.35;transition:background .15s}
 .nav-link:hover,.nav-link:focus-visible{background:#282828}
@@ -183,7 +181,6 @@ h1{font-size:clamp(31px,3.2vw,39px);line-height:1.2;letter-spacing:-.045em;margi
 .search input{flex:none;width:100%;height:59px;padding:0 6px}
 .composer-bar{display:flex;align-items:center;justify-content:space-between;min-height:39px;padding:0 1px}
 .composer-label{display:flex;align-items:center;gap:10px;color:#b7b7b7;font-size:12px}
-.composer-star{color:#e6e6e6;font-size:23px;line-height:1}
 .go{margin:0}
 .key-helper{justify-content:space-between;text-align:left}
 .workspace{background:radial-gradient(circle at 82% 15%,#ffffff0b,transparent 34%),radial-gradient(circle at 18% 85%,#ffffff06,transparent 38%),#202020}
@@ -207,31 +204,39 @@ h1{font-size:clamp(31px,3.2vw,39px);line-height:1.2;letter-spacing:-.045em;margi
 .center{animation:ui-rise .75s cubic-bezier(.16,1,.3,1) both}.nav-link{transition:transform .25s ease,background .25s,border-color .25s}.nav-link:hover{transform:translateX(3px);background:#ffffff20}.go{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}.go:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 6px 18px #0006}
 @keyframes ui-rise{from{opacity:0;transform:translateY(17px);filter:blur(9px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}@keyframes ui-orb{to{transform:translate(-13%,17%) scale(1.18)}}
 @media(max-width:480px){.search{min-height:116px;padding:9px 11px 10px}.search input{height:54px;padding:0 5px}.go{margin:0}.key-helper{justify-content:center;text-align:center}}
+
+/* Frosted surfaces with the soft white edge and depth of the reference. */
+.shell{background:radial-gradient(circle at 64% 11%,#a2a2a24a,transparent 27%),radial-gradient(circle at 24% 78%,#77777740,transparent 32%),linear-gradient(135deg,#1a1a1c,#444447 50%,#202022)}
+.workspace{background:transparent}
+.workspace:before{background:radial-gradient(circle,#ffffff24,transparent 68%);filter:blur(52px)}
+.sidebar{background:linear-gradient(145deg,#ffffff24,#ffffff0d 55%,#ffffff16);border-right:1px solid #ffffff4a;box-shadow:inset 1px 0 #ffffff38,inset -1px 0 #ffffff18,12px 0 42px #0003;backdrop-filter:blur(32px) saturate(145%);-webkit-backdrop-filter:blur(32px) saturate(145%)}
+.top{background:linear-gradient(110deg,#ffffff27,#ffffff0b 60%,#ffffff19);border-bottom:1px solid #ffffff37;box-shadow:inset 0 1px #ffffff27;backdrop-filter:blur(28px) saturate(140%);-webkit-backdrop-filter:blur(28px) saturate(140%)}
+.center{position:relative;width:min(760px,100%);padding:clamp(28px,4vw,48px);border:1px solid #ffffff63;border-radius:38px;background:linear-gradient(145deg,#ffffff30,#ffffff12 42%,#ffffff1f),#7b7b7b22;box-shadow:inset 0 1px #ffffff8a,inset 0 -1px #ffffff20,0 25px 70px #0006;backdrop-filter:blur(35px) saturate(140%);-webkit-backdrop-filter:blur(35px) saturate(140%)}
+.center:before{content:'';position:absolute;left:8%;right:8%;top:0;height:1px;background:linear-gradient(90deg,transparent,#ffffffbc,transparent);pointer-events:none}
+.nav-link{background:linear-gradient(145deg,#ffffff24,#ffffff0b);border:1px solid #ffffff53;border-radius:16px;box-shadow:inset 0 1px #ffffff4a,0 8px 22px #0002;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.side-nav .nav-link:first-child{background:linear-gradient(145deg,#ffffff34,#ffffff12);border-color:#ffffff87}
+.nav-link:hover{background:#ffffff32;border-color:#ffffffa6}
+.top-note,.overline,.alert{background:linear-gradient(145deg,#ffffff2c,#ffffff10);border:1px solid #ffffff59;border-radius:14px;box-shadow:inset 0 1px #ffffff50;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.search,.key-input{background:linear-gradient(145deg,#ffffff42,#ffffff12 52%,#ffffff26),#79797930;border:1px solid #ffffff9e;border-radius:29px;box-shadow:inset 0 1px #ffffffbd,inset 0 -1px #ffffff22,0 13px 35px #0004;backdrop-filter:blur(38px) saturate(145%);-webkit-backdrop-filter:blur(38px) saturate(145%)}
+.search:hover{border-color:#fff;box-shadow:inset 0 1px #fff,0 16px 43px #0005}
+.search:focus-within{border-color:#fff;box-shadow:inset 0 1px #fff,0 0 0 3px #ffffff22,0 16px 43px #0005}
+.go,.search button,.key-submit{background:linear-gradient(145deg,#fff,#d2d2d2);box-shadow:inset 0 1px #fff,0 5px 16px #0004}
+@media(max-width:720px){.brand{display:none}.center{padding:30px 24px;border-radius:30px}}
+@media(max-width:480px){main{padding:19vh 16px 44px}.center{padding:25px 17px;border-radius:27px}.search{border-radius:23px}.sidebar{width:54px;padding:15px 5px}.top{padding:0 16px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
 
 const bootCss = `
-.boot{position:fixed;inset:0;z-index:100;display:grid;place-items:center;overflow:hidden;background:#111;color:#f2f2f2;font-family:Arial,Helvetica,sans-serif;animation:boot-out .55s ease 3.55s forwards}
-.boot:before{content:'';position:absolute;inset:-25%;background:radial-gradient(circle at 48% 47%,#ffffff12,transparent 22%),radial-gradient(circle at 20% 18%,#ffffff08,transparent 28%),radial-gradient(circle at 82% 77%,#ffffff09,transparent 27%);filter:blur(22px);animation:boot-ambient 5s ease-in-out infinite alternate}
-.boot-top{position:absolute;top:27px;left:clamp(22px,4vw,54px);right:clamp(22px,4vw,54px);display:flex;justify-content:space-between;align-items:center;color:#a6a6a6;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
-.boot-top span:first-child{display:flex;align-items:center;gap:10px}.boot-top i{width:7px;height:7px;border-radius:50%;background:#eee;box-shadow:0 0 10px #fff8;animation:boot-pulse 1.4s ease-in-out infinite}
-.boot-stage{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:min(480px,90vw);padding:20px;text-align:center}
-.boot-halo{position:relative;width:clamp(148px,21vw,220px);height:clamp(148px,21vw,220px);display:grid;place-items:center;border:1px solid #ffffff36;border-radius:50%;background:radial-gradient(circle at 35% 24%,#ffffff2b,#ffffff08 38%,#ffffff03 72%),#24242499;box-shadow:inset 0 1px #ffffff91,inset 0 -12px 24px #0005,0 20px 65px #0008,0 0 70px #ffffff10;backdrop-filter:blur(26px) saturate(140%);-webkit-backdrop-filter:blur(26px) saturate(140%);animation:boot-halo-in 1s cubic-bezier(.2,.8,.2,1) both,boot-float 3s ease-in-out 1s infinite}
-.boot-halo:before,.boot-halo:after{content:'';position:absolute;inset:-15px;border:1px solid #ffffff18;border-radius:50%;animation:boot-orbit 6s linear infinite}.boot-halo:after{inset:-30px;border-color:#ffffff0a;animation-duration:9s;animation-direction:reverse}
-.boot-star{width:55%;height:55%;fill:none;stroke:#f7f7f7;stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 0 10px #ffffffaa);animation:boot-star-turn 3.4s cubic-bezier(.2,.65,.2,1) both}
-.boot-star path{stroke-dasharray:245;stroke-dashoffset:245;animation:boot-draw 1.3s ease-out .25s forwards}
-.boot-word{margin:38px 0 0;font-size:clamp(39px,6vw,59px);font-weight:760;letter-spacing:-.075em;line-height:1.1;background:linear-gradient(110deg,#aaa,#fff 42%,#d0d0d0 62%,#fff);background-clip:text;-webkit-background-clip:text;color:transparent;clip-path:inset(0 100% 0 0);filter:drop-shadow(0 0 14px #ffffff35);animation:boot-word-in 1s cubic-bezier(.16,1,.3,1) 1.05s forwards}
-.boot-sub{margin:11px 0 0;color:#9d9d9d;font-size:13px;letter-spacing:.03em;opacity:0;animation:boot-fade .5s ease 1.7s forwards}
-.boot-bottom{position:absolute;bottom:clamp(23px,5vh,48px);left:clamp(22px,4vw,54px);right:clamp(22px,4vw,54px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:22px;color:#b6b6b6;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
-.boot-status{min-width:205px;white-space:nowrap}.boot-status strong{color:#f1f1f1;font-weight:500}.boot-track{height:3px;border-radius:99px;background:#ffffff24;overflow:hidden;box-shadow:inset 0 1px 2px #0008}.boot-track i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#888,#fff);box-shadow:0 0 14px #fff8;animation:boot-fill 3.55s linear forwards}.boot-skip{border:1px solid #ffffff45;border-radius:999px;padding:7px 13px;background:linear-gradient(145deg,#ffffff22,#ffffff0c);color:#eaeaea;font:inherit;cursor:pointer;backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px)}.boot-skip:hover{background:#ffffff30;border-color:#ffffffa0}
-@keyframes boot-out{to{opacity:0;visibility:hidden;pointer-events:none}}@keyframes boot-ambient{to{transform:translate3d(2%,-2%,0) scale(1.08)}}@keyframes boot-pulse{50%{opacity:.35;transform:scale(.7)}}@keyframes boot-halo-in{from{opacity:0;transform:scale(.65);filter:blur(18px)}to{opacity:1;transform:scale(1);filter:blur(0)}}@keyframes boot-float{50%{transform:translateY(-7px)}}@keyframes boot-orbit{to{transform:rotate(360deg)}}@keyframes boot-star-turn{from{transform:rotate(-65deg) scale(.65);opacity:0}to{transform:rotate(360deg) scale(1);opacity:1}}@keyframes boot-draw{to{stroke-dashoffset:0}}@keyframes boot-word-in{to{clip-path:inset(0 0 0 0)}}@keyframes boot-fade{to{opacity:1}}@keyframes boot-fill{to{width:100%}}
-@media(max-width:650px){.boot-bottom{grid-template-columns:1fr auto;gap:12px}.boot-status{grid-column:1 / -1}.boot-stage{transform:translateY(-12px)}}
-@media(prefers-reduced-motion:reduce){.boot{display:none}.boot *,.boot:before,.boot:after{animation:none!important}}
+.boot{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,#38383a,#151516 68%);color:#f6f6f6;animation:boot-out .55s ease 2.75s forwards}
+.boot-word{font:700 clamp(46px,8vw,82px)/1 Arial,Helvetica,sans-serif;letter-spacing:-.075em;text-shadow:0 6px 34px #ffffff32;animation:boot-word-in 1.25s cubic-bezier(.16,1,.3,1) both}
+@keyframes boot-word-in{from{opacity:0;filter:blur(15px);transform:translateY(18px) scale(.95)}to{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}}
+@keyframes boot-out{to{opacity:0;visibility:hidden;pointer-events:none}}
+@media(prefers-reduced-motion:reduce){.boot{display:none}.boot-word{animation:none}}
 `;
 
-const bootHtml = `<div class="boot" role="status" aria-label="isRecool loading"><div class="boot-top"><span><i aria-hidden="true"></i>isRecool</span><span>Starting</span></div><div class="boot-stage"><div class="boot-halo" aria-hidden="true"><svg class="boot-star" viewBox="0 0 100 100"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg></div><div class="boot-word">isRecool</div><p class="boot-sub">The web, a little quieter.</p></div><div class="boot-bottom"><span class="boot-status"><strong id="boot-count">01 / 08</strong> <span id="boot-message">opening interface</span></span><div class="boot-track" aria-hidden="true"><i></i></div><button class="boot-skip" type="button">Skip intro ↗</button></div></div>`;
+const bootHtml = `<div class="boot" role="status" aria-label="isRecool loading"><span class="boot-word">isRecool</span></div>`;
 
-const bootJs = `(()=>{const boot=document.querySelector('.boot');if(!boot)return;const steps=['opening interface','loading styles','preparing access','checking layout','setting shortcuts','arranging links','drawing details','ready'];let current=0;const message=document.getElementById('boot-message');const count=document.getElementById('boot-count');const timer=setInterval(()=>{current=Math.min(current+1,steps.length-1);if(message)message.textContent=steps[current];if(count)count.textContent=String(current+1).padStart(2,'0')+' / 08';if(current===steps.length-1)clearInterval(timer)},430);boot.querySelector('.boot-skip')?.addEventListener('click',()=>{clearInterval(timer);boot.remove()});setTimeout(()=>clearInterval(timer),4000)})();`;
+const bootJs = `(()=>{const boot=document.querySelector('.boot');if(!boot)return;let done=false;const finish=()=>{if(done)return;done=true;boot.remove();window.removeEventListener('keydown',onKey)};const onKey=e=>{if(e.key==='Enter'||e.key==='Escape')finish()};window.addEventListener('keydown',onKey);setTimeout(finish,3300)})();`;
 
 const SESSION_AGE = 7 * 24 * 60 * 60;
 const HTML_LIMIT = 2 * 1024 * 1024;
@@ -698,17 +703,15 @@ const css = `
   .error-content .reason{border-color:#777;background:#ffffff0b;color:#eee}
 `;
 
-const star = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 88 72H12Z M50 92 12 28h76Z"/></svg>';
-
 function page(title, content, status = 200, googleScript = false, localScript = false, showBoot = false) {
-  const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span class="mark">${star}</span><span>isRecool</span></a><nav class="side-nav"><a class="nav-link" href="/app"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New browse</span></a><a class="nav-link" href="/login"><span class="nav-icon" aria-hidden="true">◌</span><span class="nav-label">Account</span></a></nav><div class="side-bottom"><a class="nav-link" href="/privacy"><span class="nav-icon" aria-hidden="true">ⓘ</span><span class="nav-label">Privacy</span></a></div></aside><div class="workspace"><header class="top"><span class="top-title">isRecool</span><span class="top-note">Private browser</span></header><main>${content}</main></div></div>`;
+  const shell = `<div class="shell"><aside class="sidebar" aria-label="Main navigation"><a class="brand" href="/app"><span>isRecool</span></a><nav class="side-nav"><a class="nav-link" href="/app"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">New browse</span></a><a class="nav-link" href="/login"><span class="nav-icon" aria-hidden="true">◌</span><span class="nav-label">Account</span></a></nav><div class="side-bottom"><a class="nav-link" href="/privacy"><span class="nav-icon" aria-hidden="true">ⓘ</span><span class="nav-label">Privacy</span></a></div></aside><div class="workspace"><header class="top"><span class="top-title">isRecool</span><span class="top-note">Private browser</span></header><main>${content}</main></div></div>`;
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
   if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
     headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   }
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · isRecool</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}${localScript ? '<script src="/ui.js?v=boot2" defer></script>' : ''}</head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · isRecool</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}${localScript ? '<script src="/ui.js?v=boot3" defer></script>' : ''}</head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
 }
 
 function googleWidget(env, origin) {
@@ -720,7 +723,7 @@ function googleLoginPage(env, origin) {
 }
 
 function keyPage(error = '', status = 200) {
-  return page('Enter key', `<section class="center"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Access key</span><button class="go" type="submit" aria-label="Continue">↑</button></div></form><p class="helper key-helper"><span>A new key is claimed by the first Google account that signs in.</span><span>Next: Google sign-in</span></p></section>`, status, false, true, true);
+  return page('Enter key', `<section class="center"><h1>Enter your key.</h1><p class="subhead">Then continue with the Google account connected to it.</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form class="search" action="/access" method="post"><input id="key" name="key" type="password" aria-label="Access key" maxlength="100" required autocomplete="off" placeholder="Paste your access key" autofocus><div class="composer-bar"><span class="composer-label">Access key</span><button class="go" type="submit" aria-label="Continue">↑</button></div></form><p class="helper key-helper"><span>A new key is claimed by the first Google account that signs in.</span><span>Next: Google sign-in</span></p></section>`, status, false, true, true);
 }
 
 function privacyPage() {
@@ -747,7 +750,7 @@ function claimPage(user, formToken, error = '', status = 200) {
 }
 
 function appPage(user, env, formToken, pending = '') {
-  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Website or search</span><button class="go" type="submit" aria-label="Open">↑</button></div></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true, true);
+  const response = page('Browse', `<section class="center"><div class="overline">isRecool / browse</div><h1>Where to?</h1><p class="subhead">Enter a website or search for something.</p><form class="search" action="/browse" method="get"><input id="url" name="url" type="text" inputmode="url" aria-label="Website address or search" placeholder="Search or enter an address" value="${escapeHtml(pending)}" required autocomplete="off" spellcheck="false" autofocus><div class="composer-bar"><span class="composer-label">Website or search</span><button class="go" type="submit" aria-label="Open">↑</button></div></form><p class="helper"><span>Sites open through isRecool when supported.</span><span>Press Enter to open</span></p><div class="identity"><span>Signed in as <strong>${escapeHtml(user.login)}</strong></span>${logoutForm(formToken)}</div></section>`, 200, false, true, true);
   if (env.RELAY_URL) {
     const relayOrigin = new URL(env.RELAY_URL).origin;
     response.headers.set('Link', `<${relayOrigin}>; rel=preconnect`);
@@ -758,5 +761,5 @@ function appPage(user, env, formToken, pending = '') {
 
 function googleChoicePage(target) {
   const query = target.searchParams.get('q') || '';
-  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><div class="composer-bar"><span class="composer-label"><span class="composer-star" aria-hidden="true">✡</span> Web search</span><button class="go" type="submit" aria-label="Search">↑</button></div></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
+  return page('Search', `<section class="center"><div class="overline">isRecool / search</div><h1>Find anything.</h1><p class="subhead">Search the web inside isRecool. Results are provided by DuckDuckGo.</p><form class="search" action="/search" method="get"><input id="q" name="q" type="text" aria-label="Search the web" placeholder="What are you looking for?" value="${escapeHtml(query)}" required autocomplete="off" autofocus><div class="composer-bar"><span class="composer-label">Web search</span><button class="go" type="submit" aria-label="Search">↑</button></div></form><p class="helper"><span>Private search, no extra steps.</span><span>Press Enter to search</span></p></section>`, 200, false, true);
 }
