@@ -224,6 +224,21 @@ h1{font-size:clamp(31px,3.2vw,39px);line-height:1.2;letter-spacing:-.045em;margi
 @media(max-width:720px){.brand{display:none}.center{padding:30px 24px;border-radius:30px}}
 @media(max-width:480px){main{padding:19vh 16px 44px}.center{padding:25px 17px;border-radius:27px}.search{border-radius:23px}.sidebar{width:54px;padding:15px 5px}.top{padding:0 16px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Nature wallpaper and translucent, light-catching liquid glass. */
+.shell{background:linear-gradient(115deg,#1018204d,#14212b22 50%,#10182048),url('https://jamisonkaden7-dev.github.io/kadens-propxy/nature-lake-glass.jpg') center center/cover fixed;isolation:isolate}
+.workspace:before{display:none}
+.sidebar{background:linear-gradient(140deg,#e7f2f32b,#bfd0d018 48%,#15263246);border-right-color:#ffffff73;box-shadow:inset 1px 0 #ffffff72,inset -1px 0 #ffffff1f,10px 0 35px #06101930;backdrop-filter:blur(24px) saturate(170%);-webkit-backdrop-filter:blur(24px) saturate(170%)}
+.top{background:linear-gradient(110deg,#e6f1f12c,#b2cad019 55%,#14242d32);border-bottom-color:#ffffff67;box-shadow:inset 0 1px #ffffff7a;backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%)}
+.center{background:linear-gradient(140deg,#f3fbfc3e,#d4e5e522 43%,#bdd7e01c 70%,#e6f2ef2b);border-color:#ffffffb8;box-shadow:inset 0 1px #ffffffe3,inset 0 -1px #ffffff2e,inset 1px 0 #ffffff58,0 28px 68px #08131b85;backdrop-filter:blur(14px) saturate(185%) brightness(1.1);-webkit-backdrop-filter:blur(14px) saturate(185%) brightness(1.1)}
+.center:before{background:linear-gradient(90deg,transparent,#fff,transparent)}
+.nav-link{background:linear-gradient(140deg,#eef8f452,#c4d8d820 54%,#0c1c283d);border-color:#ffffff9a;box-shadow:inset 0 1px #ffffffa8,inset 0 -1px #ffffff20,0 8px 20px #07121a38;backdrop-filter:blur(14px) saturate(175%);-webkit-backdrop-filter:blur(14px) saturate(175%)}
+.side-nav .nav-link:first-child{background:linear-gradient(140deg,#ffffff67,#b6cbd62d 55%,#1d3e4a3d);border-color:#ffffffc4}
+.search,.key-input{background:linear-gradient(135deg,#ffffff62,#d9eced27 45%,#112c3b3b 78%,#ffffff25);border-color:#ffffffc2;box-shadow:inset 0 1px #fff,inset 0 -1px #ffffff33,0 14px 35px #06121d66;backdrop-filter:blur(13px) saturate(175%);-webkit-backdrop-filter:blur(13px) saturate(175%)}
+.search:before{background:linear-gradient(90deg,transparent,#ffffffdf,transparent)}
+.top-note,.overline,.alert{background:linear-gradient(145deg,#ffffff43,#ffffff10);border-color:#ffffff8b;color:#f8fcff;backdrop-filter:blur(16px) saturate(155%);-webkit-backdrop-filter:blur(16px) saturate(155%)}
+.subhead,.reason{color:#edf3f4}.helper,.info,.identity,.composer-label{color:#e5eff0}.search input::placeholder{color:#e0e9e9}.brand,.top-title{color:#fff;text-shadow:0 1px 8px #0006}
+@media(max-width:720px){.shell{background-attachment:scroll;background-position:54% center}}
 `;
 
 const bootCss = `
@@ -618,7 +633,7 @@ function proxyHeaders(type) {
     'Cache-Control': 'private, no-store',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
-    'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self'; form-action 'self'; base-uri 'none'; script-src 'none'; frame-src 'none'"
+    'Content-Security-Policy': "default-src 'none'; img-src 'self' data: https://jamisonkaden7-dev.github.io; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self'; form-action 'self'; base-uri 'none'; script-src 'none'; frame-src 'none'"
   };
 }
 
@@ -708,7 +723,7 @@ function page(title, content, status = 200, googleScript = false, localScript = 
   const headers = new Headers(proxyHeaders('text/html; charset=utf-8'));
   if (localScript) headers.set('Content-Security-Policy', headers.get('Content-Security-Policy').replace("script-src 'none'", "script-src 'self'").replace("form-action 'self'", 'form-action https:'));
   if (googleScript) {
-    headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
+    headers.set('Content-Security-Policy', "default-src 'none'; script-src https://accounts.google.com/gsi/client https://*.gstatic.com; frame-src https://accounts.google.com; connect-src https://accounts.google.com https://*.gstatic.com; img-src data: https://jamisonkaden7-dev.github.io https://accounts.google.com https://*.googleusercontent.com; style-src 'unsafe-inline' https://accounts.google.com https://*.gstatic.com; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'");
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   }
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · isRecool</title><style>${modernCss}${showBoot ? bootCss : ''}</style>${googleScript ? '<script src="https://accounts.google.com/gsi/client" async defer></script>' : ''}${localScript ? '<script src="/ui.js?v=boot3" defer></script>' : ''}</head><body>${showBoot ? bootHtml : ''}${shell}</body></html>`, { status, headers });
