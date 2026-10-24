@@ -49,11 +49,11 @@ export const featureJs = `(()=>{
       list.innerHTML=songs.length?songs.map((s,i)=>{
         const album=s.albumId?'<a class="track-album" href="/music/album/'+esc(s.source)+'/'+encodeURIComponent(s.albumId)+'">'+esc(s.collectionName||'View album')+'</a>':esc(s.collectionName||'');
         const link=safeLink(s.trackViewUrl);
-        return '<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div class="track-info"><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+album+'</span></div><span class="track-duration">'+duration(s.duration)+'</span><button type="button" data-play="'+i+'" aria-label="Play '+esc(s.trackName)+'">▶</button>'+(link?'<a class="track-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on '+(s.source==='audius'?'Audius':'Deezer')+'">Open ↗</a>':'')+'</article>';
+        return '<article class="track"><img alt="" loading="lazy" src="'+esc(s.artworkUrl100||'')+'"><div class="track-info"><strong>'+esc(s.trackName)+'</strong><span>'+esc(s.artistName)+' · '+album+'</span></div><span class="track-duration">'+duration(s.duration)+'</span><button type="button" data-play="'+i+'" aria-label="'+(s.previewUrl?'Play ':'Preview unavailable for ')+esc(s.trackName)+'"'+(s.previewUrl?'':' disabled')+'>'+ (s.previewUrl?'▶':'—') +'</button>'+(link?'<a class="track-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+esc(s.trackName)+' on '+(s.source==='audius'?'Audius':'Deezer')+'">Open ↗</a>':'')+'</article>';
       }).join(''):'<p class="music-empty">No playable tracks found. Try another search.</p>';
     }
     function play(i){
-      if(!songs[i])return;
+      if(!songs[i]?.previewUrl)return;
       index=i;const s=songs[i];
       audio.src=s.previewUrl||'';audio.play().catch(()=>{note.textContent='Playback is unavailable for this track. Open it on '+(s.source==='audius'?'Audius':'Deezer')+'.'});
       now.textContent=s.trackName+' — '+s.artistName;
@@ -84,7 +84,7 @@ export const featureJs = `(()=>{
     if(albumView){
       source=albumView.dataset.source;
       fetch('/music-album-api?source='+source+'&id='+encodeURIComponent(albumView.dataset.id)).then(res=>{if(!res.ok)throw Error('Album unavailable');return res.json()}).then(data=>{
-        songs=(data.results||[]).filter(s=>s.kind==='song'&&s.previewUrl);render();
+        songs=(data.results||[]).filter(s=>s.kind==='song');render();
         sourceNote.textContent=source==='audius'?'Full tracks via Audius':'Complete track list · Deezer previews';
         const hero=document.getElementById('music-album-hero');
         const link=safeLink(data.link);
