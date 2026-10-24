@@ -127,6 +127,19 @@ h1{font-size:clamp(31px,3.2vw,39px);line-height:1.2;letter-spacing:-.045em;margi
 .top-note,.overline,.alert{background:linear-gradient(145deg,#ffffff43,#ffffff10);border-color:#ffffff8b;color:#f8fcff;backdrop-filter:blur(16px) saturate(155%);-webkit-backdrop-filter:blur(16px) saturate(155%)}
 .subhead,.reason{color:#edf3f4}.helper,.info,.identity,.composer-label{color:#e5eff0}.search input::placeholder{color:#e0e9e9}.brand,.top-title{color:#fff;text-shadow:0 1px 8px #0006}
 @media(max-width:720px){.shell{background-attachment:scroll;background-position:54% center}}
+
+/* Clearer controls and calmer key entry. */
+.side-nav{gap:8px}
+.nav-link{min-height:58px;padding:8px 11px;gap:12px;border-radius:18px;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 6px #06101970}
+.nav-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid #ffffff73;border-radius:11px;background:linear-gradient(145deg,#ffffff50,#ffffff17);box-shadow:inset 0 1px #ffffff9c,0 4px 12px #07131b38;color:#fff}
+.nav-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.side-bottom{padding-top:16px;border-top-color:#ffffff4d}.side-bottom .nav-link{color:#fff;font-size:14px}
+.center h1{font-size:clamp(32px,3.4vw,42px);font-weight:700;letter-spacing:-.045em;margin:12px 0 12px;text-shadow:0 2px 14px #07101960}
+.center .overline+h1{margin-top:18px}.subhead{font-size:15.5px;line-height:1.5;margin-bottom:27px;text-shadow:0 1px 9px #07101964}
+.search{min-height:112px;padding:10px 14px 11px;border-radius:27px}.search input{height:52px;padding:0 7px;font-size:15.5px}.composer-bar{min-height:38px}
+.composer-label{text-transform:uppercase;letter-spacing:.12em;font-size:10px;font-weight:700;color:#f4f9f8}
+.go{width:39px;height:39px}.key-helper{display:block;max-width:460px;margin:18px auto 0;text-align:center;font-size:13px;line-height:1.55;color:#f1f6f5}
+@media(max-width:720px){.nav-link{padding:8px 5px}.nav-icon{width:32px;height:32px}}
 `;
 
 export const bootCss = `
@@ -135,6 +148,10 @@ export const bootCss = `
 @keyframes boot-word-in{from{opacity:0;filter:blur(15px);transform:translateY(18px) scale(.95)}to{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}}
 @keyframes boot-out{to{opacity:0;visibility:hidden;pointer-events:none}}
 @media(prefers-reduced-motion:reduce){.boot{display:none}.boot-word{animation:none}}
+.boot{overflow:hidden;background:#101821}
+.boot:before{content:'';position:absolute;inset:-24px;background:linear-gradient(130deg,#0714218c,#0c1b2b65),url('https://jamisonkaden7-dev.github.io/kadens-propxy/nature-lake-glass.jpg') center/cover;filter:blur(12px) saturate(155%) brightness(.82);transform:scale(1.04)}
+.boot:after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,#ffffff20,transparent 30%)}
+.boot-word{position:relative;z-index:1;background:linear-gradient(180deg,#fff,#dcebe9);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 12px 23px #06101ba6)}
 `;
 
 export const bootHtml = `<div class="boot" role="status" aria-label="isRecool loading"><span class="boot-word">isRecool</span></div>`;
